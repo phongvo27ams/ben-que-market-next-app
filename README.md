@@ -1,4 +1,4 @@
-# Multivendor E-commerce Next App
+# Go Cart Next App
 
 ## Technologies Used
 

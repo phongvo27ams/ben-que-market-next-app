@@ -141,27 +141,50 @@ export const dummyRatingsData = [
   },
 ]
 
-export const dummyStoreData = {
-  id: "store_1",
-  userId: "user_1",
-  name: "Lumina & Sonic Labs",
-  description: "At Lumina & Sonic Labs, we believe shopping should be simple, smart, and satisfying. Whether you're hunting for the latest fashion trends, top-notch electronics, home essentials, or unique lifestyle products — we've got it all under one digital roof.",
-  username: "happyshop",
-  address: "252 Sunny Street, Pleasantville, CA 90210",
-  status: "approved",
-  isActive: true,
-  logo: store_logo_1,
-  email: "happyshop@example.com",
-  contact: "+0 1234567890",
-  createdAt: "2025-09-04T09:04:16.189Z",
-  updatedAt: "2025-09-04T09:04:44.273Z",
-  user: {
-    id: "user_31dOriXqC4TATvc0brIhlYbwwc5",
-    name: "Great Stack",
-    email: "user.greatstack@gmail.com",
-    image: profile_pic1,
-  }
-}
+export const dummyStoreData = [
+  {
+    id: "store_1",
+    userId: "user_1",
+    name: "Lumina & Sonic Labs",
+    description: "At Lumina & Sonic Labs, we believe shopping should be simple, smart, and satisfying. Whether you're hunting for the latest fashion trends, top-notch electronics, home essentials, or unique lifestyle products — we've got it all under one digital roof.",
+    username: "happyshop",
+    address: "252 Sunny Street, Pleasantville, CA 90210",
+    status: "approved",
+    isActive: true,
+    logo: store_logo_1,
+    email: "happyshop@example.com",
+    contact: "+0 1234567890",
+    createdAt: "2025-09-04T09:04:16.189Z",
+    updatedAt: "2025-09-04T09:04:44.273Z",
+    user: {
+      id: "user_31dOriXqC4TATvc0brIhlYbwwc5",
+      name: "Great Stack",
+      email: "user.greatstack@gmail.com",
+      image: profile_pic1,
+    }
+  },
+  {
+    id: "store_2",
+    userId: "user_2",
+    name: "UrbanPulse Gear",
+    description: "Your go-to hub for the latest tech trends. From rugged speakers to colorful smart accessories, we fuel your energetic lifestyle with gadgets that keep up with your beat. Tech that moves with you, wherever you go.",
+    username: "happyshop",
+    address: "88 Retro Boulevard, Ground Floor Brooklyn, NY 11211",
+    status: "approved",
+    isActive: true,
+    logo: store_logo_1,
+    email: "happyshop@example.com",
+    contact: "+0 1234567890",
+    createdAt: "2025-09-04T09:04:16.189Z",
+    updatedAt: "2025-09-04T09:04:44.273Z",
+    user: {
+      id: "user_31dOriXqC4TATvc0brIhlYbwwc5",
+      name: "Great Stack",
+      email: "user.greatstack@gmail.com",
+      image: profile_pic1,
+    }
+  },
+]
 
 export const productDummyData = [
   {
