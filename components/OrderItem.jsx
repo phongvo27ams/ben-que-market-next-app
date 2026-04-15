@@ -38,7 +38,7 @@ const OrderItem = ({ order }) => {
                   <div>
                     {ratings.find(rating => order.id === rating.orderId && item.product.id === rating.productId)
                       ? <Rating value={ratings.find(rating => order.id === rating.orderId && item.product.id === rating.productId).rating} />
-                      : <button onClick={() => setRatingModal({ orderId: order.id, productId: item.product.id })} className={`text-green-500 hover:bg-green-50 transition ${order.status !== "DELIVERED" && 'hidden'}`}>Rate Product</button>
+                      : <button onClick={() => setRatingModal({ orderId: order.id, productId: item.product.id })} className={`text-green-500 hover:bg-green-50 transition ${order.status !== "DELIVERED" && 'hidden'}`}>Đánh giá sản phẩm</button>
                     }</div>
                   {ratingModal && <RatingModal ratingModal={ratingModal} setRatingModal={setRatingModal} />}
                 </div>

@@ -17,29 +17,29 @@ const Footer = () => {
 
   const linkSections = [
     {
-      title: "PRODUCTS",
+      title: "SẢN PHẨM",
       links: [
-        { text: "Earphones", path: '/', icon: null },
-        { text: "Headphones", path: '/', icon: null },
-        { text: "Smartphones", path: '/', icon: null },
-        { text: "Laptops", path: '/', icon: null },
+        { text: "Trái cây theo mùa", path: '/', icon: null },
+        { text: "Thực phẩm khô", path: '/', icon: null },
+        { text: "Đồ ăn chế biến sẵn", path: '/', icon: null },
+        { text: "Đồ uống tự nhiên", path: '/', icon: null },
       ]
     },
     {
-      title: "WEBSITE?",
+      title: "WEBSITE",
       links: [
-        { text: "Home", path: '/', icon: null },
-        { text: "Privacy Policy", path: '/', icon: null },
-        { text: "Become Plus Member", path: '/pricing', icon: null },
+        { text: "Trang chủ", path: '/', icon: null },
+        { text: "Chính sách bảo mật", path: '/', icon: null },
+        { text: "Trở thành Thành viên Plus", path: '/pricing', icon: null },
         { text: "Create Your Store", path: '/create-store', icon: null },
       ]
     },
     {
-      title: "CONTACT",
+      title: "LIÊN HỆ",
       links: [
         { text: "+84-4410-27773", path: '/', icon: MailIcon },
-        { text: "contact@example.com", path: '/', icon: PhoneIcon },
-        { text: "252 Sunny Street, Pleasantville, CA 90210", path: '/', icon: MapPinIcon }
+        { text: "contact@bqmarket.com", path: '/', icon: PhoneIcon },
+        { text: "211 Hai Bà Trưng, P. Sài Gòn", path: '/', icon: MapPinIcon }
       ]
     }
   ];
@@ -57,9 +57,9 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-start justify-between gap-10 py-10 border-b border-slate-500/30 text-slate-500">
           <div>
             <Link href="/" className="text-4xl font-semibold text-slate-700">
-              <span className="text-green-600">go</span>cart<span className="text-green-600 text-5xl leading-0">.</span>
+              <span className="text-green-600">Bến Quê </span>Market<span className="text-green-600 text-5xl leading-0">.</span>
             </Link>
-            <p className="max-w-[410px] mt-6 text-sm">Welcome to Go Cart, your ultimate destination for the latest and smartest gadgets. From smartphones and smartwatches to essential accessories, we bring you the best in innovation — all in one place.</p>
+            <p className="max-w-[410px] mt-6 text-sm text-justify">Chào mừng bạn đến với Bến Quê Market. Chúng tôi là nền tảng thương mại điện tử chuyên cung cấp các mặt hàng đặc sản miền Tây Việt Nam, kết nối trực tiếp giữa người tiêu dùng và các nhà sản xuất địa phương. Ứng dụng hướng đến việc mang những sản phẩm chính gốc, đậm bản sắc vùng miền đến tay khách hàng một cách tiện lợi, minh bạch và đáng tin cậy.</p>
             <div className="flex items-center gap-3 mt-5">
               {socialIcons.map((item, i) => (
                 <Link href={item.link} key={i} className="flex items-center justify-center w-10 h-10 bg-slate-100 hover:scale-105 hover:border border-slate-300 transition rounded-full">
@@ -85,7 +85,7 @@ const Footer = () => {
           </div>
         </div>
         <p className="py-4 text-sm text-slate-500">
-          &copy; 2025 Go Cart.
+          &copy; 2026 Bến Quê Market.
         </p>
       </div>
     </footer>

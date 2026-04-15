@@ -98,7 +98,7 @@ export default function Cart() {
     </div>
   ) : (
     <div className="min-h-[80vh] mx-6 flex items-center justify-center text-slate-400">
-      <h1 className="text-2xl sm:text-4xl font-semibold">Your cart is empty</h1>
+      <h1 className="text-2xl sm:text-4xl font-semibold">Giỏ hàng của bạn chưa có gì cả!</h1>
     </div>
   );
 }

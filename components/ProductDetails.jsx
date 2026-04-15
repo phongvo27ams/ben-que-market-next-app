@@ -75,7 +75,7 @@ const ProductDetails = ({ product }) => {
           {Array(5).fill('').map((_, index) => (
             <StarIcon key={index} size={14} className='text-transparent mt-0.5' fill={averageRating >= index + 1 ? "#00C950" : "#D1D5DB"} />
           ))}
-          <p className="text-sm ml-3 text-slate-500">{product.rating.length} Reviews</p>
+          <p className="text-sm ml-3 text-slate-500">{product.rating.length} Lượt đánh giá</p>
         </div>
         <div className="flex items-start my-6 gap-3 text-2xl font-semibold text-slate-800">
               <p>{formatMoney(product.price, currency)}</p>
@@ -83,7 +83,7 @@ const ProductDetails = ({ product }) => {
         </div>
         <div className="flex items-center gap-2 text-slate-500">
           <TagIcon size={14} />
-          <p>Save {((product.mrp - product.price) / product.mrp * 100).toFixed(0)}% right now</p>
+          <p>Tiết kiệm {((product.mrp - product.price) / product.mrp * 100).toFixed(0)}% ngay bây giờ!</p>
         </div>
         <div className="flex items-end gap-5 mt-10">
           {
@@ -104,9 +104,9 @@ const ProductDetails = ({ product }) => {
         </div>
         <hr className="border-gray-300 my-5" />
         <div className="flex flex-col gap-4 text-slate-500">
-          <p className="flex gap-3"> <EarthIcon className="text-slate-400" /> Free shipping worldwide </p>
-          <p className="flex gap-3"> <CreditCardIcon className="text-slate-400" /> 100% Secured Payment </p>
-          <p className="flex gap-3"> <UserIcon className="text-slate-400" /> Trusted by top brands </p>
+          <p className="flex gap-3"> <EarthIcon className="text-slate-400" />Miễn phí vận chuyển cho Membership</p>
+          <p className="flex gap-3"> <CreditCardIcon className="text-slate-400" />Thanh toán trực tuyến an toàn</p>
+          <p className="flex gap-3"> <UserIcon className="text-slate-400" />Được tin tưởng bởi khách hàng của chúng tôi</p>
         </div>
 
       </div>

@@ -9,7 +9,14 @@ import toast from "react-hot-toast";
 import { assets } from "../../../assets/assets";
 
 export default function StoreAddProduct() {
-  const categories = ["Electronics", "Clothing", "Home & Kitchen", "Beauty & Health", "Toys & Games", "Sports & Outdoors", "Books & Media", "Food & Drink", "Hobbies & Crafts", "Others"];
+  const categories = [
+    "Đặc sản thực phẩm khô",
+    "Trái cây đặc sản theo mùa",
+    "Đồ uống tự nhiên",
+    "Đồ ăn chế biến sẵn",
+    "Đồ thủ công mỹ nghệ",
+    "Quà lưu niệm"
+  ];
 
   const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null })
   const [productInfo, setProductInfo] = useState({

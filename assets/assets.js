@@ -34,7 +34,7 @@ export const assets = {
   product_img7, product_img8, product_img9, product_img10, product_img11, product_img12,
 }
 
-export const categories = ["Headphones", "Speakers", "Watch", "Earbuds", "Mouse", "Decoration"];
+export const categories = ["Đặc sản thực phẩm khô", "Trái cây đặc sản theo mùa", "Đồ ăn chế biến sẵn", "Đồ uống tự nhiên", "Đồ thủ công mỹ nghệ", "Quà lưu niệm"];
 
 export const dummyRatingsData = [
   {
@@ -371,20 +371,20 @@ export const productDummyData = [
 
 export const ourSpecsData = [
   {
-    title: "Free Shipping",
-    description: "Enjoy fast, free delivery on every order no conditions, just reliable doorstep.",
+    title: "Miễn phí giao hàng",
+    description: "Tận hưởng dịch vụ giao hàng nhanh chóng, miễn phí và giao hàng tận nhà đáng tin cậy.",
     icon: SendIcon,
     accent: '#05DF72'
   },
   {
-    title: "7 Days easy Return",
-    description: "Change your mind? No worries. Return any item within 7 days.",
+    title: "Đóng gói chuẩn, giữ trọn hương vị",
+    description: "Sản phẩm được đóng gói cẩn thận theo tiêu chuẩn riêng, đảm bảo giữ nguyên độ tươi ngon và hương vị đặc trưng trong suốt quá trình vận chuyển.",
     icon: ClockFadingIcon,
     accent: '#FF8904'
   },
   {
-    title: "24/7 Customer Support",
-    description: "We're here for you. Get expert help with our customer support.",
+    title: "Hỗ trợ khách hàng",
+    description: "Chúng tôi luôn sẵn sàng hỗ trợ bạn. Nhận trợ giúp chuyên nghiệp từ bộ phận chăm sóc khách hàng của chúng tôi.",
     icon: HeadsetIcon,
     accent: '#A684FF'
   }
