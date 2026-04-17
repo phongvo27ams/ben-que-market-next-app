@@ -8,12 +8,32 @@ export async function POST(request) {
     const { userId } = getAuth(request);
     const { cart } = await request.json();
 
+    const productIds = Object.keys(cart || {});
+    const products = productIds.length > 0
+      ? await prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, inStock: true },
+        })
+      : [];
+
+    const productMap = new Map(products.map((product) => [product.id, product.inStock]));
+    const sanitizedCart = {};
+
+    for (const [productId, quantity] of Object.entries(cart || {})) {
+      const availableStock = productMap.get(productId);
+      if (typeof availableStock !== "number" || availableStock <= 0) continue;
+      sanitizedCart[productId] = Math.min(Number(quantity) || 0, availableStock);
+      if (sanitizedCart[productId] <= 0) {
+        delete sanitizedCart[productId];
+      }
+    }
+
     await prisma.user.update({
       where: { id: userId },
-      data: { cart:cart },
+      data: { cart: sanitizedCart },
     });
 
-    return NextResponse.json({ message: "Cart updated successfully" }, { status: 200 });
+    return NextResponse.json({ message: "Cart updated successfully", cart: sanitizedCart }, { status: 200 });
   } catch (error) {
     console.error("Error updating user cart:", error);
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
@@ -28,8 +48,34 @@ export async function GET(request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
+    const currentCart = user?.cart || {};
+    const productIds = Object.keys(currentCart);
+    const products = productIds.length > 0
+      ? await prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, inStock: true },
+        })
+      : [];
+    const productMap = new Map(products.map((product) => [product.id, product.inStock]));
+    const sanitizedCart = {};
 
-    return NextResponse.json({ cart: user.cart }, { status: 200 });
+    for (const [productId, quantity] of Object.entries(currentCart)) {
+      const availableStock = productMap.get(productId);
+      if (typeof availableStock !== "number" || availableStock <= 0) continue;
+      sanitizedCart[productId] = Math.min(Number(quantity) || 0, availableStock);
+      if (sanitizedCart[productId] <= 0) {
+        delete sanitizedCart[productId];
+      }
+    }
+
+    if (JSON.stringify(sanitizedCart) !== JSON.stringify(currentCart)) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { cart: sanitizedCart },
+      });
+    }
+
+    return NextResponse.json({ cart: sanitizedCart }, { status: 200 });
   } catch (error) {
     console.error("Error fetching user cart:", error);
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });

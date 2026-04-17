@@ -79,7 +79,7 @@ export default function Cart() {
                       </div>
                     </td>
                     <td className="text-center">
-                      <Counter productId={item.id} />
+                      <Counter productId={item.id} maxStock={item.inStock} />
                     </td>
                     <td className="text-center">{formatMoney(item.price * item.quantity).toLocaleString()}</td>
                     <td className="text-center max-md:hidden">

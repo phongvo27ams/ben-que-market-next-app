@@ -27,10 +27,27 @@ export async function POST(request) {
       if (isPaid) {
         // Mark orders as paid
         await Promise.all(orderIdsArray.map(async (orderId) => {
-          await prisma.order.update({
+          const order = await prisma.order.update({
             where: { id: orderId },
             data: { isPaid: true, },
+            include: { orderItems: true },
           });
+
+          await Promise.all(order.orderItems.map(async (item) => {
+            const updatedProduct = await prisma.product.updateMany({
+              where: {
+                id: item.productId,
+                inStock: { gte: item.quantity },
+              },
+              data: {
+                inStock: { decrement: item.quantity },
+              },
+            });
+
+            if (updatedProduct.count === 0) {
+              throw new Error("Insufficient stock while finalizing Stripe payment");
+            }
+          }));
         }));
 
         // Clear user's cart

@@ -50,6 +50,7 @@ const ProductDetails = ({ product }) => {
 
   const addToCartHandler = () => {
     if (isOwnProduct) return; // Prevent adding own product
+    if (product.inStock <= 0) return;
     dispatch(addToCart({ productId }))
   }
 
@@ -90,16 +91,16 @@ const ProductDetails = ({ product }) => {
             !isOwnProduct && cart[productId] && (
               <div className="flex flex-col gap-3">
                 <p className="text-lg text-slate-800 font-semibold">Quantity</p>
-                <Counter productId={productId} />
+                <Counter productId={productId} maxStock={product.inStock} />
               </div>
             )
           }
           <button
-            disabled={isOwnProduct}
+            disabled={isOwnProduct || product.inStock <= 0}
             onClick={() => (!cart[productId] ? addToCartHandler() : router.push('/cart'))}
-            className={`px-10 py-3 text-sm font-medium rounded transition ${isOwnProduct ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-slate-900 active:scale-95'}`}
+            className={`px-10 py-3 text-sm font-medium rounded transition ${isOwnProduct || product.inStock <= 0 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-slate-900 active:scale-95'}`}
           >
-            {isOwnProduct ? 'Owned Product' : (!cart[productId] ? 'Add to Cart' : 'View Cart')}
+            {isOwnProduct ? 'Owned Product' : product.inStock <= 0 ? 'Out of Stock' : (!cart[productId] ? 'Add to Cart' : 'View Cart')}
           </button>
         </div>
         <hr className="border-gray-300 my-5" />

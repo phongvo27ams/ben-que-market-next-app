@@ -5,7 +5,7 @@ import prisma from "../../../lib/prisma";
 export async function GET(request) {
   try {
     let products = await prisma.product.findMany({
-      where: { inStock: true },
+      where: { inStock: { gt: 0 } },
       include: {
         rating: {
           select: {

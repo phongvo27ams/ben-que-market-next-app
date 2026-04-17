@@ -4,23 +4,21 @@ import { NextResponse } from "next/server";
 
 import authSeller from "../../../../middlewares/authSeller";
 
-// Toggle stock status for a product
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    const { productId } = await request.json();
+    const { productId, inStock } = await request.json();
 
-    if (!productId) {
-      return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
+    if (!productId || Number.isNaN(Number(inStock)) || Number(inStock) < 0) {
+      return NextResponse.json({ error: "Valid product ID and stock quantity are required" }, { status: 400 });
     }
 
-    const storeId =  await authSeller(userId);
+    const storeId = await authSeller(userId);
 
     if (!storeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if the product belongs to the seller's store
     const product = await prisma.product.findFirst({
       where: { id: productId, storeId },
     });
@@ -31,12 +29,12 @@ export async function POST(request) {
 
     await prisma.product.update({
       where: { id: productId },
-      data: { inStock: !product.inStock },
+      data: { inStock: Number(inStock) },
     });
 
-    return NextResponse.json({ message: "Product stock status updated successfully" }, { status: 200 });
+    return NextResponse.json({ message: "Product stock updated successfully" }, { status: 200 });
   } catch (error) {
-    console.error("Error toggling product stock status:", error);
+    console.error("Error updating product stock:", error);
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
   }
 }

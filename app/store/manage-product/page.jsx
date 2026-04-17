@@ -36,8 +36,8 @@ export default function StoreManageProducts() {
     description: "",
     mrp: 0,
     price: 0,
+    inStock: 0,
     category: "",
-    inStock: true,
   })
   const [editImages, setEditImages] = useState([null, null, null, null])
 
@@ -55,16 +55,16 @@ export default function StoreManageProducts() {
     setLoading(false);
   }
 
-  const toggleStock = async (productId) => {
+  const updateStock = async (productId, nextStock) => {
     try {
       const token = await getToken();
-      const { data } = await axios.post(`/api/store/stock-toggle`, { productId }, {
+      const { data } = await axios.post(`/api/store/stock-toggle`, { productId, inStock: Number(nextStock) }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.id === productId ? { ...product, inStock: !product.inStock } : product
+          product.id === productId ? { ...product, inStock: Number(nextStock) } : product
         )
       );
       toast.success(data.message);
@@ -81,8 +81,8 @@ export default function StoreManageProducts() {
       description: product.description,
       mrp: product.mrp,
       price: product.price,
-      category: product.category,
       inStock: product.inStock,
+      category: product.category,
     });
     setEditImages([
       product.images[0] || null,
@@ -99,8 +99,8 @@ export default function StoreManageProducts() {
       description: "",
       mrp: 0,
       price: 0,
+      inStock: 0,
       category: "",
-      inStock: true,
     });
     setEditImages([null, null, null, null]);
   }
@@ -130,8 +130,8 @@ export default function StoreManageProducts() {
       formData.append("description", editForm.description);
       formData.append("mrp", Number(editForm.mrp));
       formData.append("price", Number(editForm.price));
+      formData.append("inStock", Number(editForm.inStock));
       formData.append("category", editForm.category);
-      formData.append("inStock", editForm.inStock);
       formData.append("retainedImages", JSON.stringify(retainedImages));
       newImages.forEach((image) => formData.append("newImages", image));
 
@@ -147,6 +147,7 @@ export default function StoreManageProducts() {
                 ...editForm,
                 mrp: Number(editForm.mrp),
                 price: Number(editForm.price),
+                inStock: Number(editForm.inStock),
                 images: data.images,
               }
             : product
@@ -224,7 +225,7 @@ export default function StoreManageProducts() {
               <th className="px-4 py-3">Description</th>
               <th className="px-4 py-3">MRP</th>
               <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3 text-center">In Stock</th>
+              <th className="px-4 py-3 text-center">Stock</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
         </thead>
@@ -244,11 +245,13 @@ export default function StoreManageProducts() {
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.mrp, currency)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.price, currency)}</td>
                   <td className="px-4 py-3 text-center">
-                    <label className="relative inline-flex items-center cursor-pointer text-gray-900 gap-3">
-                      <input type="checkbox" className="sr-only peer" onChange={() => toast.promise(toggleStock(product.id), { loading: "Updating data..." })} checked={product.inStock} />
-                      <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-600 transition-colors duration-200"></div>
-                      <span className="dot absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform duration-200 ease-in-out peer-checked:translate-x-4"></span>
-                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={product.inStock}
+                      onChange={(e) => toast.promise(updateStock(product.id, e.target.value), { loading: "Updating data..." })}
+                      className="w-20 rounded border border-slate-200 px-2 py-1 text-center outline-none"
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-3">
@@ -348,9 +351,9 @@ export default function StoreManageProducts() {
                             Offer Price ({currency})
                             <input type="number" min="0" name="price" value={editForm.price} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
-                          <label className="flex items-center gap-3 text-sm text-slate-700">
-                            <input type="checkbox" name="inStock" checked={editForm.inStock} onChange={handleEditChange} />
-                            Available in stock
+                          <label className="flex flex-col gap-2">
+                            Stock Quantity
+                            <input type="number" min="0" name="inStock" value={editForm.inStock} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
                         </div>
 

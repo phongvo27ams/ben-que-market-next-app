@@ -104,8 +104,14 @@ export async function POST(request) {
     const category = formData.get("category");
     const images = formData.getAll("images");
 
+    const inStock = Number(formData.get("inStock") || 0);
+
     if (!name || !description || !mrp || !price || !category || images.length === 0) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+    }
+
+    if (Number.isNaN(inStock) || inStock < 0) {
+      return NextResponse.json({ error: "Stock quantity must be 0 or greater" }, { status: 400 });
     }
 
     // Upload images to ImageKit
@@ -119,6 +125,7 @@ export async function POST(request) {
         mrp,
         price,
         category,
+        inStock,
         images: imageUrl,
       }
     });
@@ -168,7 +175,7 @@ export async function PUT(request) {
     const mrp = formData.get("mrp");
     const price = formData.get("price");
     const category = formData.get("category");
-    const inStock = formData.get("inStock") === "true";
+    const inStock = Number(formData.get("inStock"));
     const retainedImages = JSON.parse(formData.get("retainedImages") || "[]");
     const newImages = formData.getAll("newImages").filter((image) => image?.size > 0);
 
@@ -178,6 +185,8 @@ export async function PUT(request) {
       !description ||
       Number.isNaN(Number(mrp)) ||
       Number.isNaN(Number(price)) ||
+      Number.isNaN(inStock) ||
+      inStock < 0 ||
       !category
     ) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
@@ -212,7 +221,7 @@ export async function PUT(request) {
         mrp: Number(mrp),
         price: Number(price),
         category,
-        inStock: Boolean(inStock),
+        inStock,
         images: nextImages,
       },
     });

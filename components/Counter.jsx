@@ -1,13 +1,18 @@
 'use client'
 import { addToCart, removeFromCart } from "../lib/features/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
 
-const Counter = ({ productId }) => {
+const Counter = ({ productId, maxStock = Infinity }) => {
   const { cartItems } = useSelector(state => state.cart);
 
   const dispatch = useDispatch();
 
   const addToCartHandler = () => {
+    if ((cartItems[productId] || 0) >= maxStock) {
+      toast.error(`Chỉ còn ${maxStock} sản phẩm trong kho`);
+      return;
+    }
     dispatch(addToCart({ productId }))
   }
 

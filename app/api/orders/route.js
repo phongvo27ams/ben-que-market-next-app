@@ -4,6 +4,8 @@ import { PaymentMethod } from "@prisma/client";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+const getAvailableStock = (product) => Number(product?.inStock ?? 0);
+
 // Place a new order for the authenticated user
 export async function POST(request) {
   try {
@@ -56,9 +58,20 @@ export async function POST(request) {
     let fullAmount = 0;
     let isShippingFeeAdded = false;
 
-    // 1) Group cart items by storeId
+    // 1) Validate stock and group cart items by storeId
     for (const item of items) {
       const product = await prisma.product.findUnique({ where: { id: item.id } });
+      if (!product) {
+        return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      }
+
+      if (item.quantity > getAvailableStock(product)) {
+        return NextResponse.json(
+          { error: `${product.name} only has ${getAvailableStock(product)} item(s) left in stock` },
+          { status: 400 }
+        );
+      }
+
       const storeId = product.storeId;
       if (!orderByStore.has(storeId)) {
         orderByStore.set(storeId, []);
@@ -66,42 +79,61 @@ export async function POST(request) {
       orderByStore.get(storeId).push({ ...item, price: product.price });
     }
 
-    // 2) Create one order per store exactly once
-    for (const [storeId, sellerItems] of orderByStore.entries()) {
-      let total = sellerItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+    await prisma.$transaction(async (tx) => {
+      for (const [storeId, sellerItems] of orderByStore.entries()) {
+        let total = sellerItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
 
-      if (couponCode && coupon) {
-        total -= (coupon.discount / 100) * total;
+        if (couponCode && coupon) {
+          total -= (coupon.discount / 100) * total;
+        }
+
+        if (!isPlusMember && !isShippingFeeAdded) {
+          total += 5;
+          isShippingFeeAdded = true;
+        }
+
+        fullAmount += parseFloat(total.toFixed(2));
+
+        const order = await tx.order.create({
+          data: {
+            userId,
+            storeId,
+            addressId,
+            total: parseFloat(total.toFixed(2)),
+            paymentMethod,
+            isCouponUsed: !!coupon,
+            coupon: coupon ? coupon : {},
+            orderItems: {
+              create: sellerItems.map(it => ({
+                productId: it.id,
+                quantity: it.quantity,
+                price: it.price,
+              }))
+            }
+          },
+        });
+
+        orderIds.push(order.id);
       }
 
-      if (!isPlusMember && !isShippingFeeAdded) {
-        total += 5;
-        isShippingFeeAdded = true;
-      }
+      if (paymentMethod === "COD") {
+        for (const item of items) {
+          const updatedProduct = await tx.product.updateMany({
+            where: {
+              id: item.id,
+              inStock: { gte: item.quantity },
+            },
+            data: {
+              inStock: { decrement: item.quantity },
+            },
+          });
 
-      fullAmount += parseFloat(total.toFixed(2));
-
-      const order = await prisma.order.create({
-        data: {
-          userId,
-          storeId,
-          addressId,
-          total: parseFloat(total.toFixed(2)),
-          paymentMethod,
-          isCouponUsed: !!coupon,
-          coupon: coupon ? coupon : {},
-          orderItems: {
-            create: sellerItems.map(it => ({
-              productId: it.id,
-              quantity: it.quantity,
-              price: it.price,
-            }))
+          if (updatedProduct.count === 0) {
+            throw new Error("Một hoặc nhiều sản phẩm hiện không còn đủ số lượng yêu cầu.");
           }
-        },
-      });
-
-      orderIds.push(order.id);
-    }
+        }
+      }
+    });
 
     if (paymentMethod === "STRIPE") {
       const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
