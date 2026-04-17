@@ -7,6 +7,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 
 import { assets } from "../../../assets/assets";
+import RichTextEditor from "../../../components/RichTextEditor";
 
 export default function StoreAddProduct() {
   const categories = [
@@ -148,10 +149,17 @@ export default function StoreAddProduct() {
         <input type="text" name="name" onChange={onChangeHandler} value={productInfo.name} placeholder="Enter product name" className="w-full max-w-sm p-2 px-4 outline-none border border-slate-200 rounded" required />
       </label>
 
-      <label htmlFor="" className="flex flex-col gap-2 my-6 ">
-        Description
-        <textarea name="description" onChange={onChangeHandler} value={productInfo.description} placeholder="Enter product description" rows={5} className="w-full max-w-sm p-2 px-4 outline-none border border-slate-200 rounded resize-none" required />
-      </label>
+      <div className="flex flex-col gap-2 my-6">
+        <p>Description</p>
+        <div className="w-full max-w-3xl">
+          <RichTextEditor
+            value={productInfo.description}
+            onChange={(value) => setProductInfo((prev) => ({ ...prev, description: value }))}
+            placeholder="Write a complete blog-style product introduction with headings, highlights, ingredients, uses, and selling points."
+            minHeight={320}
+          />
+        </div>
+      </div>
 
       <div className="flex gap-5">
         <label htmlFor="" className="flex flex-col gap-2 ">

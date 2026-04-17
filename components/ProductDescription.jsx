@@ -10,8 +10,6 @@ const ProductDescription = ({ product }) => {
 
   return (
     <div className="my-18 text-sm text-slate-600">
-
-      {/* Tabs */}
       <div className="flex border-b border-slate-200 mb-6 max-w-2xl">
         {['Mô tả', 'Đánh giá'].map((tab, index) => (
           <button className={`${tab === selectedTab ? 'border-b-[1.5px] font-semibold' : 'text-slate-400'} px-3 py-2 font-medium`} key={index} onClick={() => setSelectedTab(tab)}>
@@ -20,12 +18,13 @@ const ProductDescription = ({ product }) => {
         ))}
       </div>
 
-      {/* Description */}
       {selectedTab === "Mô tả" && (
-        <p className="max-w-xl text-justify">{product.description}</p>
+        <div
+          className="max-w-3xl overflow-hidden break-words text-justify [&_*]:max-w-full [&_a]:break-all [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_h1]:my-4 [&_h1]:break-words [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:text-slate-800 [&_h2]:my-3 [&_h2]:break-words [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-slate-800 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl [&_img]:object-contain [&_li]:break-words [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:break-words [&_p]:leading-7 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-900 [&_pre]:p-4 [&_pre]:text-slate-100 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_td]:border [&_td]:border-slate-200 [&_td]:p-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:p-2 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6"
+          dangerouslySetInnerHTML={{ __html: product.description }}
+        />
       )}
 
-      {/* Reviews */}
       {selectedTab === "Đánh giá" && (
         <div className="flex flex-col gap-3 mt-14">
           {product.rating.map((item, index) => (
@@ -46,12 +45,11 @@ const ProductDescription = ({ product }) => {
         </div>
       )}
 
-      {/* Store Page */}
       <div className="flex gap-3 mt-14">
         <Image src={product.store.logo} alt="" className="size-11 rounded-full ring ring-slate-400" width={100} height={100} />
         <div>
           <p className="font-medium text-slate-600">Sản phẩm của {product.store.name}</p>
-          <Link href={`/shop/${product.store.username}`} className="flex items-center gap-1.5 text-green-500"> xem thêm <ArrowRight size={14} /></Link>
+          <Link href={`/shop/${product.store.username}`} className="flex items-center gap-1.5 text-green-500">xem thêm <ArrowRight size={14} /></Link>
         </div>
       </div>
     </div>

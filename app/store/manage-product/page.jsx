@@ -1,7 +1,7 @@
 'use client'
 
 import axios from "axios"
-import React from "react";
+import React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
 import Image from "next/image"
@@ -10,6 +10,9 @@ import Loading from "../../../components/Loading"
 import { formatMoney } from "../../../lib/format"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { assets } from "../../../assets/assets"
+import RichTextEditor from "../../../components/RichTextEditor"
+
+const stripHtml = (html = "") => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 export default function StoreManageProducts() {
   const { getToken } = useAuth();
@@ -205,7 +208,7 @@ export default function StoreManageProducts() {
   return (
     <>
       <h1 className="text-2xl text-slate-500 mb-5">Manage <span className="text-slate-800 font-medium">Products</span></h1>
-      <div className="w-full overflow-x-auto rounded-xl ring-1 ring-slate-200 bg-white">
+      <div className="w-full overflow-x-auto lg:overflow-visible rounded-xl ring-1 ring-slate-200 bg-white">
         <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <colgroup>
             <col className="w-[24%]" />
@@ -236,7 +239,7 @@ export default function StoreManageProducts() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    <p className="line-clamp-2 break-words">{product.description}</p>
+                    <p className="line-clamp-2 break-words">{stripHtml(product.description)}</p>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.mrp, currency)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.price, currency)}</td>
@@ -270,8 +273,8 @@ export default function StoreManageProducts() {
                 </tr>
                 {editingProductId === product.id && (
                   <tr className="border-t border-gray-200 bg-slate-50">
-                    <td colSpan={6} className="p-4">
-                      <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <td colSpan={6} className="overflow-visible p-4">
+                      <div className="overflow-visible rounded-xl border border-slate-200 bg-white p-4">
                         <div className="mb-4 flex items-center justify-between">
                           <h2 className="text-base font-medium text-slate-800">Edit Product</h2>
                           <button type="button" onClick={cancelEdit} className="text-slate-500 hover:text-slate-700">
@@ -328,10 +331,15 @@ export default function StoreManageProducts() {
                               ))}
                             </select>
                           </label>
-                          <label className="flex flex-col gap-2 md:col-span-2">
-                            Description
-                            <textarea name="description" value={editForm.description} onChange={handleEditChange} rows={4} className="rounded border border-slate-200 p-2 px-3 outline-none resize-none" required />
-                          </label>
+                          <div className="flex flex-col gap-2 md:col-span-2">
+                            <p>Description</p>
+                            <RichTextEditor
+                              value={editForm.description}
+                              onChange={(value) => setEditForm((prev) => ({ ...prev, description: value }))}
+                              placeholder="Write a blog-style product story with headings, highlights, ingredients, usage, benefits, and a call to action."
+                              minHeight={340}
+                            />
+                          </div>
                           <label className="flex flex-col gap-2">
                             Actual Price ({currency})
                             <input type="number" min="0" name="mrp" value={editForm.mrp} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
