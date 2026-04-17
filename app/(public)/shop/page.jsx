@@ -1,38 +1,278 @@
 'use client'
 
-import { Suspense } from "react"
-import { MoveLeftIcon } from "lucide-react"
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { MoveLeftIcon, RotateCcwIcon } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSelector } from "react-redux"
 
 import ProductCard from "../../../components/ProductCard"
+import { categories } from "../../../assets/assets"
+import { formatMoney } from "../../../lib/format"
 
 function ShopContent() {
-  // get query params ?search=abc
   const searchParams = useSearchParams()
-  const search = searchParams.get('search')
+  const search = searchParams.get('search') || ''
   const router = useRouter()
+  const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
   const products = useSelector(state => state.product.list)
 
-  const filteredProducts = search
-    ? products.filter(product =>
-      product.name.toLowerCase().includes(search.toLowerCase())
-    )
-    : products;
+  const priceBounds = useMemo(() => {
+    if (!products.length) {
+      return { min: 0, max: 0 }
+    }
+
+    const prices = products.map((product) => product.price)
+    return {
+      min: Math.floor(Math.min(...prices)),
+      max: Math.ceil(Math.max(...prices)),
+    }
+  }, [products])
+
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [minPrice, setMinPrice] = useState(priceBounds.min)
+  const [maxPrice, setMaxPrice] = useState(priceBounds.max)
+  const [sortBy, setSortBy] = useState('latest')
+  const [inStockOnly, setInStockOnly] = useState(false)
+  const [minRating, setMinRating] = useState(0)
+
+  useEffect(() => {
+    setMinPrice(priceBounds.min)
+    setMaxPrice(priceBounds.max)
+  }, [priceBounds.min, priceBounds.max])
+
+  const filteredProducts = useMemo(() => {
+    let nextProducts = [...products]
+
+    if (search) {
+      nextProducts = nextProducts.filter((product) =>
+        product.name.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+
+    if (selectedCategory) {
+      nextProducts = nextProducts.filter((product) => product.category === selectedCategory)
+    }
+
+    nextProducts = nextProducts.filter((product) => product.price >= minPrice && product.price <= maxPrice)
+
+    if (inStockOnly) {
+      nextProducts = nextProducts.filter((product) => product.inStock)
+    }
+
+    if (minRating > 0) {
+      nextProducts = nextProducts.filter((product) => {
+        const averageRating = product.rating.length
+          ? product.rating.reduce((acc, item) => acc + item.rating, 0) / product.rating.length
+          : 0
+        return averageRating >= minRating
+      })
+    }
+
+    switch (sortBy) {
+      case 'price-asc':
+        nextProducts.sort((a, b) => a.price - b.price)
+        break
+      case 'price-desc':
+        nextProducts.sort((a, b) => b.price - a.price)
+        break
+      case 'rating':
+        nextProducts.sort((a, b) => {
+          const ratingA = a.rating.length ? a.rating.reduce((acc, item) => acc + item.rating, 0) / a.rating.length : 0
+          const ratingB = b.rating.length ? b.rating.reduce((acc, item) => acc + item.rating, 0) / b.rating.length : 0
+          return ratingB - ratingA
+        })
+        break
+      default:
+        nextProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    }
+
+    return nextProducts
+  }, [products, search, selectedCategory, minPrice, maxPrice, inStockOnly, minRating, sortBy])
+
+  const resetFilters = () => {
+    setSelectedCategory('')
+    setMinPrice(priceBounds.min)
+    setMaxPrice(priceBounds.max)
+    setSortBy('latest')
+    setInStockOnly(false)
+    setMinRating(0)
+  }
+
+  const handleMinPriceChange = (value) => {
+    const nextMin = Number(value)
+    setMinPrice(nextMin > maxPrice ? maxPrice : nextMin)
+  }
+
+  const handleMaxPriceChange = (value) => {
+    const nextMax = Number(value)
+    setMaxPrice(nextMax < minPrice ? minPrice : nextMax)
+  }
 
   return (
     <div className="min-h-[70vh] mx-6">
-      <div className=" max-w-7xl mx-auto">
-        <h1 onClick={() => router.push('/shop')} className="text-2xl text-slate-500 my-6 flex items-center gap-2 cursor-pointer"> {search && <MoveLeftIcon size={20} />} Tất cả <span className="text-slate-700 font-medium">Sản phẩm</span></h1>
-        <div className="grid grid-cols-2 sm:flex flex-wrap gap-6 xl:gap-12 mx-auto mb-32">
-          {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+      <div className="max-w-7xl mx-auto">
+        <h1 onClick={() => router.push('/shop')} className="text-2xl text-slate-500 my-6 flex items-center gap-2 cursor-pointer">
+          {search && <MoveLeftIcon size={20} />}
+          Tất cả <span className="text-slate-700 font-medium">Sản phẩm</span>
+        </h1>
+
+        <div className="grid gap-10 xl:gap-14 lg:grid-cols-[minmax(0,1fr)_320px] items-start mb-32">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:gap-x-10 sm:gap-y-12 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredProducts.map((product) => (
+              <div key={product.id} className="mx-auto w-full max-w-[210px] sm:max-w-[220px] xl:max-w-[210px] 2xl:max-w-[220px]">
+                <ProductCard product={product} compact />
+              </div>
+            ))}
+            {!filteredProducts.length && (
+              <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-500">
+                Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại.
+              </div>
+            )}
+          </div>
+
+          <aside className="lg:sticky lg:top-24 lg:pl-2 xl:pl-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800">Bộ lọc sản phẩm</h2>
+                  <p className="text-sm text-slate-500">Tinh chỉnh danh sách theo nhu cầu của bạn</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition"
+                >
+                  <RotateCcwIcon size={14} />
+                  Đặt lại
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-6">
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Danh mục</h3>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {categories.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setSelectedCategory((current) => current === category ? '' : category)}
+                        className={`rounded-full border px-3 py-1.5 text-sm transition ${selectedCategory === category
+                          ? 'border-slate-800 bg-slate-800 text-white'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                          }`}
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-slate-800">Khoảng giá</h3>
+                    <p className="text-sm text-slate-500">
+                      {formatMoney(minPrice, currency)} - {formatMoney(maxPrice, currency)}
+                    </p>
+                  </div>
+
+                  <div className="mt-4">
+                    <input
+                      type="range"
+                      min={priceBounds.min}
+                      max={priceBounds.max}
+                      value={minPrice}
+                      onChange={(e) => handleMinPriceChange(e.target.value)}
+                      className="w-full accent-slate-700"
+                    />
+                    <input
+                      type="range"
+                      min={priceBounds.min}
+                      max={priceBounds.max}
+                      value={maxPrice}
+                      onChange={(e) => handleMaxPriceChange(e.target.value)}
+                      className="mt-2 w-full accent-green-600"
+                    />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <label className="text-sm text-slate-600">
+                      Từ
+                      <input
+                        type="number"
+                        min={priceBounds.min}
+                        max={maxPrice}
+                        value={minPrice}
+                        onChange={(e) => handleMinPriceChange(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600">
+                      Đến
+                      <input
+                        type="number"
+                        min={minPrice}
+                        max={priceBounds.max}
+                        value={maxPrice}
+                        onChange={(e) => handleMaxPriceChange(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Sắp xếp</h3>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none"
+                  >
+                    <option value="latest">Mới nhất</option>
+                    <option value="price-asc">Giá tăng dần</option>
+                    <option value="price-desc">Giá giảm dần</option>
+                    <option value="rating">Đánh giá cao nhất</option>
+                  </select>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Trạng thái</h3>
+                  <label className="mt-3 flex items-center gap-3 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={inStockOnly}
+                      onChange={(e) => setInStockOnly(e.target.checked)}
+                    />
+                    Chỉ hiển thị sản phẩm còn hàng
+                  </label>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Đánh giá tối thiểu</h3>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {[0, 3, 4, 5].map((rating) => (
+                      <button
+                        key={rating}
+                        type="button"
+                        onClick={() => setMinRating(rating)}
+                        className={`rounded-lg border px-3 py-2 text-sm transition ${minRating === rating
+                          ? 'border-green-600 bg-green-50 text-green-700'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                      >
+                        {rating === 0 ? 'Tất cả' : `${rating}+`}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>
   )
 }
-
 
 export default function Shop() {
   return (

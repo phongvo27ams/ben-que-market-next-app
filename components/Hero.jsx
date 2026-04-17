@@ -9,7 +9,7 @@ import { assets } from '../assets/assets';
 
 import CategoriesMarquee from './CategoriesMarquee';
 
-const Hero = () => {
+const Hero = ({ selectedCategory, onToggleCategory }) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
   return (
@@ -20,7 +20,7 @@ const Hero = () => {
             <div className='inline-flex items-center gap-3 bg-green-300 text-green-600 pr-4 p-1 rounded-full text-xs sm:text-sm'>
               <span className='bg-green-600 px-3 py-1 max-sm:ml-1 rounded-full text-white text-xs'>NEWS</span> Miễn phí vận chuyển cho đơn hàng từ 200.000 đ! <ChevronRightIcon className='group-hover:ml-2 transition-all' size={16} />
             </div>
-            <h2 className='text-3xl sm:text-5xl leading-[1.2] my-3 font-medium bg-gradient-to-r from-slate-600 to-[#A0FF74] bg-clip-text text-transparent max-w-xs  sm:max-w-md'>
+            <h2 className='text-3xl sm:text-5xl leading-[1.2] my-3 font-medium bg-gradient-to-r from-slate-600 to-[#A0FF74] bg-clip-text text-transparent max-w-xs sm:max-w-md'>
               Tinh hoa miền Tây. Vững tin chất lượng.
             </h2>
             <div className='text-slate-800 text-sm font-medium mt-4 sm:mt-8'>
@@ -55,7 +55,7 @@ const Hero = () => {
         </div>
       </div>
 
-      <CategoriesMarquee />
+      <CategoriesMarquee selectedCategory={selectedCategory} onToggleCategory={onToggleCategory} />
     </div>
 
   )

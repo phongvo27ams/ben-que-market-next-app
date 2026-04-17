@@ -5,6 +5,86 @@ import { NextResponse } from "next/server";
 
 import authSeller from "../../../../middlewares/authSeller";
 
+const buildImageUrl = (imagekit, filePath) => imagekit.url({
+  path: filePath,
+  transformations: [
+    { quality: "auto" },
+    { format: "webp" },
+    { width: "1024" }
+  ]
+});
+
+const getImageKitFileReference = (url) => {
+  const { IMAGEKIT_URL_ENDPOINT } = process.env;
+
+  if (!IMAGEKIT_URL_ENDPOINT || !url?.startsWith(IMAGEKIT_URL_ENDPOINT)) {
+    return null;
+  }
+
+  const parsedUrl = new URL(url);
+  let relativePath = decodeURIComponent(parsedUrl.pathname);
+
+  if (relativePath.startsWith("/")) {
+    relativePath = relativePath.slice(1);
+  }
+
+  if (relativePath.startsWith("tr:")) {
+    relativePath = relativePath.slice(relativePath.indexOf("/") + 1);
+  }
+
+  const lastSlashIndex = relativePath.lastIndexOf("/");
+  const fileName = lastSlashIndex >= 0 ? relativePath.slice(lastSlashIndex + 1) : relativePath;
+  const folderPath = lastSlashIndex >= 0 ? `/${relativePath.slice(0, lastSlashIndex + 1)}` : "/";
+
+  return { fileName, folderPath };
+};
+
+const uploadImages = async (images) => {
+  const imagekit = getImageKit();
+
+  return Promise.all(images.map(async (image) => {
+    const buffer = Buffer.from(await image.arrayBuffer());
+
+    const response = await imagekit.upload({
+      file: buffer,
+      fileName: image.name,
+      folder: "products"
+    });
+
+    return buildImageUrl(imagekit, response.filePath);
+  }));
+};
+
+const deleteImageByUrl = async (url) => {
+  const imagekit = getImageKit();
+  const fileReference = getImageKitFileReference(url);
+
+  if (!fileReference) {
+    return;
+  }
+
+  const files = await imagekit.listFiles({
+    path: fileReference.folderPath,
+    name: fileReference.fileName,
+    limit: 1,
+  });
+  const fileId = files[0]?.fileId;
+
+  if (fileId) {
+    await imagekit.deleteFile(fileId);
+  }
+};
+
+const deleteImagesByUrls = async (urls = []) => {
+  await Promise.all(urls.map(async (url) => {
+    try {
+      await deleteImageByUrl(url);
+    } catch (error) {
+      console.error("Error deleting image from ImageKit:", error);
+    }
+  }));
+};
+
 // Add a new product to the store
 export async function POST(request) {
   try {
@@ -29,27 +109,7 @@ export async function POST(request) {
     }
 
     // Upload images to ImageKit
-    const imagekit = getImageKit();
-    const imageUrl = await Promise.all(images.map(async (image) => {
-      const buffer = Buffer.from(await image.arrayBuffer());
-
-      const respose = await imagekit.upload({
-        file: buffer,
-        fileName: image.name,
-        folder: "products"
-      });
-
-      const url = imagekit.url({
-        path: respose.filePath,
-        transformations: [
-          { quality: "auto" },
-          { format: "webp" },
-          { width: "1024" }
-        ]
-      });
-
-      return url;
-    }))
+    const imageUrl = await uploadImages(images);
 
     await prisma.product.create({
       data: {
@@ -87,6 +147,128 @@ export async function GET(request) {
     return NextResponse.json({ products }, { status: 200 });
   } catch (error) {
     console.error("Error fetching products:", error);
+    return NextResponse.json({ error: error.code || error.message }, { status: 400 });
+  }
+}
+
+// Update a product that belongs to the current store
+export async function PUT(request) {
+  try {
+    const { userId } = getAuth(request);
+    const storeId = await authSeller(userId);
+
+    if (!storeId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const productId = formData.get("productId");
+    const name = formData.get("name");
+    const description = formData.get("description");
+    const mrp = formData.get("mrp");
+    const price = formData.get("price");
+    const category = formData.get("category");
+    const inStock = formData.get("inStock") === "true";
+    const retainedImages = JSON.parse(formData.get("retainedImages") || "[]");
+    const newImages = formData.getAll("newImages").filter((image) => image?.size > 0);
+
+    if (
+      !productId ||
+      !name ||
+      !description ||
+      Number.isNaN(Number(mrp)) ||
+      Number.isNaN(Number(price)) ||
+      !category
+    ) {
+      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: productId, storeId },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found or does not belong to your store" }, { status: 404 });
+    }
+
+    const uploadedImageUrls = await uploadImages(newImages);
+    const nextImages = [...retainedImages, ...uploadedImageUrls];
+
+    if (nextImages.length === 0) {
+      await deleteImagesByUrls(uploadedImageUrls);
+      return NextResponse.json({ error: "Product must have at least one image" }, { status: 400 });
+    }
+
+    if (nextImages.length > 4) {
+      await deleteImagesByUrls(uploadedImageUrls);
+      return NextResponse.json({ error: "Product can have up to 4 images only" }, { status: 400 });
+    }
+
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        name,
+        description,
+        mrp: Number(mrp),
+        price: Number(price),
+        category,
+        inStock: Boolean(inStock),
+        images: nextImages,
+      },
+    });
+
+    const removedImages = product.images.filter((imageUrl) => !retainedImages.includes(imageUrl));
+    await deleteImagesByUrls(removedImages);
+
+    return NextResponse.json({ message: "Product updated successfully", images: nextImages }, { status: 200 });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    return NextResponse.json({ error: error.code || error.message }, { status: 400 });
+  }
+}
+
+// Delete a product that belongs to the current store
+export async function DELETE(request) {
+  try {
+    const { userId } = getAuth(request);
+    const storeId = await authSeller(userId);
+
+    if (!storeId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = request.nextUrl;
+    const productId = searchParams.get("productId");
+
+    if (!productId) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: productId, storeId },
+      include: { orderItems: true },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found or does not belong to your store" }, { status: 404 });
+    }
+
+    if (product.orderItems.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete a product that already exists in orders" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.product.delete({
+      where: { id: productId },
+    });
+
+    await deleteImagesByUrls(product.images);
+
+    return NextResponse.json({ message: "Product deleted successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("Error deleting product:", error);
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
   }
 }
