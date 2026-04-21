@@ -27,6 +27,7 @@ export default function StoreAddProduct() {
     price: 0,
     inStock: 0,
     category: "",
+    origin: "",
   })
   const [loading, setLoading] = useState(false);
   const [aiUsed, setAiUsed] = useState(false);
@@ -108,6 +109,7 @@ export default function StoreAddProduct() {
       formData.append("price", productInfo.price);
       formData.append("inStock", productInfo.inStock);
       formData.append("category", productInfo.category);
+      formData.append("origin", productInfo.origin);
 
       Object.keys(images).forEach((key) => {
         if (images[key]) {
@@ -122,7 +124,7 @@ export default function StoreAddProduct() {
 
       toast.success("Product added successfully!");
 
-      setProductInfo({ name: "", description: "", mrp: 0, price: 0, inStock: 0, category: "" });
+      setProductInfo({ name: "", description: "", mrp: 0, price: 0, inStock: 0, category: "", origin: "" });
       setImages({ 1: null, 2: null, 3: null, 4: null });
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message);
@@ -177,6 +179,19 @@ export default function StoreAddProduct() {
           <input type="number" min="0" name="inStock" onChange={onChangeHandler} value={productInfo.inStock} placeholder="0" className="w-full max-w-45 p-2 px-4 outline-none border border-slate-200 rounded resize-none" required />
         </label>
       </div>
+
+      <label htmlFor="" className="my-6 flex flex-col gap-2">
+        Origin
+        <input
+          type="text"
+          name="origin"
+          onChange={onChangeHandler}
+          value={productInfo.origin}
+          placeholder="Vd: Bến Tre, Đồng Tháp, An Giang..."
+          className="w-full max-w-sm rounded border border-slate-200 p-2 px-4 outline-none"
+          required
+        />
+      </label>
 
       <select onChange={e => setProductInfo({ ...productInfo, category: e.target.value })} value={productInfo.category} className="w-full max-w-sm p-2 px-4 my-6 outline-none border border-slate-200 rounded" required>
         <option value="">Select a category</option>

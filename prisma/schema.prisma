@@ -31,6 +31,7 @@ model Product {
   price       Float
   images      String[]
   category    String
+  origin      String   @default("Chưa cập nhật")
   inStock     Int      @default(0)
   storeId     String
   createdAt   DateTime @default(now())

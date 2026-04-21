@@ -102,11 +102,12 @@ export async function POST(request) {
     const mrp = Number(formData.get("mrp"));
     const price = Number(formData.get("price"));
     const category = formData.get("category");
+    const origin = formData.get("origin");
     const images = formData.getAll("images");
 
     const inStock = Number(formData.get("inStock") || 0);
 
-    if (!name || !description || !mrp || !price || !category || images.length === 0) {
+    if (!name || !description || !mrp || !price || !category || !origin || images.length === 0) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
@@ -125,6 +126,7 @@ export async function POST(request) {
         mrp,
         price,
         category,
+        origin,
         inStock,
         images: imageUrl,
       }
@@ -175,6 +177,7 @@ export async function PUT(request) {
     const mrp = formData.get("mrp");
     const price = formData.get("price");
     const category = formData.get("category");
+    const origin = formData.get("origin");
     const inStock = Number(formData.get("inStock"));
     const retainedImages = JSON.parse(formData.get("retainedImages") || "[]");
     const newImages = formData.getAll("newImages").filter((image) => image?.size > 0);
@@ -187,7 +190,8 @@ export async function PUT(request) {
       Number.isNaN(Number(price)) ||
       Number.isNaN(inStock) ||
       inStock < 0 ||
-      !category
+      !category ||
+      !origin
     ) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
@@ -221,6 +225,7 @@ export async function PUT(request) {
         mrp: Number(mrp),
         price: Number(price),
         category,
+        origin,
         inStock,
         images: nextImages,
       },

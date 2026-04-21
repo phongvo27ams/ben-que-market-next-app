@@ -12,7 +12,7 @@ import { addToCart } from '../lib/features/cart/cartSlice'
 import { toggleWishlistItem } from '../lib/features/wishlist/wishlistSlice'
 import { formatMoney } from "../lib/format"
 
-const ProductCard = ({ product, compact = false }) => {
+const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
   const dispatch = useDispatch()
   const cartItems = useSelector((state) => state.cart.cartItems)
   const wishlistItems = useSelector((state) => state.wishlist.items)
@@ -132,7 +132,7 @@ const ProductCard = ({ product, compact = false }) => {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full px-0 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+          {showQuickBuy && <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full px-0 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
             <button
               type="button"
               onClick={handleBuyNow}
@@ -141,7 +141,7 @@ const ProductCard = ({ product, compact = false }) => {
             >
               {product.inStock <= 0 ? 'HẾT HÀNG' : 'MUA NGAY'}
             </button>
-          </div>
+          </div>}
         </div>
 
         <div className={`flex justify-between gap-3 pt-2 text-sm text-slate-800 ${compact ? 'w-full' : 'max-w-60'}`}>

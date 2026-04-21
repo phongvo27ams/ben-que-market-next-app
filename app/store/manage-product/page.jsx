@@ -38,6 +38,7 @@ export default function StoreManageProducts() {
     price: 0,
     inStock: 0,
     category: "",
+    origin: "",
   })
   const [editImages, setEditImages] = useState([null, null, null, null])
 
@@ -83,6 +84,7 @@ export default function StoreManageProducts() {
       price: product.price,
       inStock: product.inStock,
       category: product.category,
+      origin: product.origin || "",
     });
     setEditImages([
       product.images[0] || null,
@@ -101,6 +103,7 @@ export default function StoreManageProducts() {
       price: 0,
       inStock: 0,
       category: "",
+      origin: "",
     });
     setEditImages([null, null, null, null]);
   }
@@ -132,6 +135,7 @@ export default function StoreManageProducts() {
       formData.append("price", Number(editForm.price));
       formData.append("inStock", Number(editForm.inStock));
       formData.append("category", editForm.category);
+      formData.append("origin", editForm.origin);
       formData.append("retainedImages", JSON.stringify(retainedImages));
       newImages.forEach((image) => formData.append("newImages", image));
 
@@ -148,6 +152,7 @@ export default function StoreManageProducts() {
                 mrp: Number(editForm.mrp),
                 price: Number(editForm.price),
                 inStock: Number(editForm.inStock),
+                origin: editForm.origin,
                 images: data.images,
               }
             : product
@@ -213,16 +218,18 @@ export default function StoreManageProducts() {
         <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <colgroup>
             <col className="w-[24%]" />
-            <col className="w-[26%]" />
+            <col className="w-[18%]" />
+            <col className="w-[12%]" />
             <col className="w-[12%]" />
             <col className="w-[12%]" />
             <col className="w-[10%]" />
-            <col className="w-[16%]" />
+            <col className="w-[12%]" />
           </colgroup>
           <thead className="bg-slate-50 text-gray-700 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Description</th>
+              <th className="px-4 py-3">Origin</th>
               <th className="px-4 py-3">MRP</th>
               <th className="px-4 py-3">Price</th>
               <th className="px-4 py-3 text-center">Stock</th>
@@ -241,6 +248,9 @@ export default function StoreManageProducts() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     <p className="line-clamp-2 break-words">{stripHtml(product.description)}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="line-clamp-2 break-words text-slate-600">{product.origin || "Chưa cập nhật"}</p>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.mrp, currency)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.price, currency)}</td>
@@ -276,7 +286,7 @@ export default function StoreManageProducts() {
                 </tr>
                 {editingProductId === product.id && (
                   <tr className="border-t border-gray-200 bg-slate-50">
-                    <td colSpan={6} className="overflow-visible p-4">
+                    <td colSpan={7} className="overflow-visible p-4">
                       <div className="overflow-visible rounded-xl border border-slate-200 bg-white p-4">
                         <div className="mb-4 flex items-center justify-between">
                           <h2 className="text-base font-medium text-slate-800">Edit Product</h2>
@@ -333,6 +343,10 @@ export default function StoreManageProducts() {
                                 <option key={category} value={category}>{category}</option>
                               ))}
                             </select>
+                          </label>
+                          <label className="flex flex-col gap-2">
+                            Origin
+                            <input type="text" name="origin" value={editForm.origin} onChange={handleEditChange} placeholder="Vd: Bến Tre, Đồng Tháp, An Giang..." className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
                           <div className="flex flex-col gap-2 md:col-span-2">
                             <p>Description</p>

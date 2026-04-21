@@ -17,7 +17,7 @@ export default function PublicLayout({ children }) {
   const dispatch = useDispatch();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { cartItems } = useSelector((state) => state.cart);
+  const { cartItems, comboProductId } = useSelector((state) => state.cart);
   const wishlistItems = useSelector((state) => state.wishlist.items);
 
   // Fetch products on initial load
@@ -40,7 +40,7 @@ export default function PublicLayout({ children }) {
     if (user) {
       dispatch(uploadCart({ getToken }));
     }
-  }, [cartItems]);
+  }, [cartItems, comboProductId]);
 
   useEffect(() => {
     if (user) {
