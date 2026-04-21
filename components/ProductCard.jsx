@@ -124,6 +124,14 @@ const ProductCard = ({ product, compact = false }) => {
             alt={product.name}
           />
 
+          <div className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16">
+            <div className="rounded-2xl bg-white/82 px-3 py-2 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.14)] ring-1 ring-white/60">
+              <p className={`text-slate-900 font-semibold leading-snug ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
+                {product.name}
+              </p>
+            </div>
+          </div>
+
           <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full px-0 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
             <button
               type="button"

@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { categories } from "../assets/assets";
+import logo from "../app/logo.png";
 
 const Footer = () => {
   const MailIcon = () => (
@@ -18,7 +20,7 @@ const Footer = () => {
   const MapPinIcon = () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M13.3346 6.66634C13.3346 9.99501 9.64197 13.4617 8.40197 14.5323C8.28645 14.6192 8.14583 14.6662 8.0013 14.6662C7.85677 14.6662 7.71615 14.6192 7.60064 14.5323C6.36064 13.4617 2.66797 9.99501 2.66797 6.66634C2.66797 5.25185 3.22987 3.8953 4.23007 2.89511C5.23026 1.89491 6.58681 1.33301 8.0013 1.33301C9.41579 1.33301 10.7723 1.89491 11.7725 2.89511C12.7727 3.8953 13.3346 5.25185 13.3346 6.66634Z" stroke="#90A1B9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8.0013 8.66634C9.10587 8.66634 10.0013 7.77091 10.0013 6.66634C10.0013 5.56177 9.10587 4.66634 8.0013 4.66634C6.89673 4.66634 6.0013 5.56177 6.0013 6.66634C6.0013 7.77091 6.89673 8.66634 8.0013 8.66634Z" stroke="#90A1B9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.0013 8.66634C9.10587 8.66634 10.0013 7.77091 10.0013 6.66634C10.0013 5.56177 9.10587 4.66634C8.0013 4.66634C6.89673 4.66634 6.0013 5.56177 6.0013 6.66634C6.0013 7.77091 6.89673 8.66634 8.0013 8.66634Z" stroke="#90A1B9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 
@@ -73,7 +75,7 @@ const Footer = () => {
       links: [
         { text: "+84-4410-27773", path: "tel:+84441027773", icon: PhoneIcon },
         { text: "contact@bqmarket.com", path: "mailto:contact@bqmarket.com", icon: MailIcon },
-        { text: "211 Hai Bà Trưng, P. Sài Gòn", path: "https://maps.google.com/?q=211+Hai+Ba+Trung", icon: MapPinIcon },
+        { text: "277 Hai Bà Trưng, P. Sài Gòn", path: "https://maps.google.com/?q=277+Hai+Ba+Trung", icon: MapPinIcon },
       ],
     },
   ];
@@ -88,17 +90,21 @@ const Footer = () => {
   return (
     <footer className="mx-6 bg-white">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col items-start justify-between gap-10 border-b border-slate-500/30 py-10 text-slate-500 md:flex-row">
-          <div>
-            <Link href="/" className="text-4xl font-semibold text-slate-700">
+        <div className="grid gap-8 border-b border-slate-500/30 py-10 text-slate-500 lg:grid-cols-[220px_minmax(0,0.92fr)_minmax(250px,1.08fr)_minmax(190px,0.92fr)_minmax(200px,0.92fr)] lg:items-start lg:gap-10">
+          <div className="flex flex-col items-center md:items-start">
+            <Link href="/" className="inline-flex justify-center">
+              <Image
+                src={logo}
+                alt="Bến Quê Market"
+                className="h-auto w-40 sm:w-48"
+              />
+            </Link>
+            <p className="mt-2 text-center text-2xl font-semibold text-slate-700 md:text-left">
               <span className="text-green-600">Bến Quê </span>
               Market
-              <span className="text-5xl leading-0 text-green-600">.</span>
-            </Link>
-            <p className="mt-6 max-w-[410px] text-justify text-sm">
-              Chào mừng bạn đến với Bến Quê Market. Chúng tôi là nền tảng thương mại điện tử chuyên cung cấp các mặt hàng đặc sản miền Tây Việt Nam, kết nối trực tiếp giữa người tiêu dùng và các nhà sản xuất địa phương.
+              <span className="text-green-600 text-3xl leading-0">.</span>
             </p>
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-4 flex items-center gap-3">
               {socialIcons.map((item, i) => (
                 <Link
                   href={item.link}
@@ -111,23 +117,41 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="flex w-full flex-wrap justify-between gap-5 text-sm md:w-[55%]">
-            {linkSections.map((section, index) => (
-              <div key={index}>
-                <h3 className="mb-3 font-medium text-slate-700 md:mb-5">{section.title}</h3>
-                <ul className="space-y-2.5">
-                  {section.links.map((link, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      {link.icon && <link.icon />}
-                      <Link href={link.path} className="transition hover:text-green-600 hover:underline">
-                        {link.text}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="min-w-0 text-sm leading-6">
+            <h3 className="mb-3 font-medium text-slate-700 md:mb-5">VỀ CHÚNG TÔI</h3>
+            <p className="max-w-[320px] text-justify text-sm leading-6">
+              Chào mừng bạn đến với Bến Quê Market. Chúng tôi là nền tảng thương mại điện tử chuyên cung cấp các đặc sản trứ danh của miền Tây Việt Nam, nơi hội tụ tinh hoa ẩm thực và giá trị văn hóa vùng sông nước.
+            </p>
           </div>
+
+          <div className="min-w-0 text-sm leading-6">
+            <h3 className="mb-3 font-medium text-slate-700 md:mb-5">SẢN PHẨM</h3>
+            <ul className="space-y-2.5">
+              {categoryLinks.map((link, i) => (
+                <li key={i} className="whitespace-nowrap">
+                  <Link href={link.path} className="transition hover:text-green-600 hover:underline">
+                    {link.text}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {linkSections.slice(1).map((section, index) => (
+            <div key={index} className="min-w-0 text-sm leading-6">
+              <h3 className="mb-3 font-medium text-slate-700 md:mb-5">{section.title}</h3>
+              <ul className="space-y-2.5">
+                {section.links.map((link, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    {link.icon && <link.icon />}
+                    <Link href={link.path} className="transition hover:text-green-600 hover:underline">
+                      {link.text}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         <p className="py-4 text-sm text-slate-500">

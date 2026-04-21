@@ -34,7 +34,7 @@ export const assets = {
   product_img7, product_img8, product_img9, product_img10, product_img11, product_img12,
 }
 
-export const categories = ["Đặc sản thực phẩm khô", "Trái cây đặc sản theo mùa", "Đồ ăn chế biến sẵn", "Đồ uống tự nhiên", "Đồ thủ công mỹ nghệ", "Quà lưu niệm"];
+export const categories = ["Thủy hải sản khô và một nắng", "Mắm cá đặc sản", "Thức uống tự nhiên", "Thực phẩm chế biến sẵn",  "Bánh kẹo đặc sản truyền thống", "Quà lưu niệm", "Trái cây sấy đặc sản", "Nước chấm, gia vị truyền thống"];
 
 export const dummyRatingsData = [
   {
