@@ -9,11 +9,12 @@ datasource db {
 }
 
 model User {
-  id    String @id
-  name  String
-  email String
-  image String
-  cart  Json   @default("{}")
+  id       String @id
+  name     String
+  email    String
+  image    String
+  cart     Json   @default("{}")
+  wishlist Json   @default("[]")
 
   // Relations
   ratings     Rating[]

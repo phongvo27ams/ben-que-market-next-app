@@ -1,23 +1,30 @@
 'use client'
 
-import { StarIcon } from 'lucide-react'
+import { HeartIcon, StarIcon } from 'lucide-react'
+import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import { addToCart } from '../lib/features/cart/cartSlice'
+import { toggleWishlistItem } from '../lib/features/wishlist/wishlistSlice'
 import { formatMoney } from "../lib/format"
 
 const ProductCard = ({ product, compact = false }) => {
   const dispatch = useDispatch()
   const cartItems = useSelector((state) => state.cart.cartItems)
+  const wishlistItems = useSelector((state) => state.wishlist.items)
+  const { user } = useUser()
+  const { openSignIn } = useClerk()
+  const { isLoaded } = useAuth()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
   const isDiscounted = product.price < product.mrp
   const discountPercent = isDiscounted
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0
   const currentCartQuantity = cartItems[product.id] || 0
+  const isWishlisted = wishlistItems.includes(product.id)
 
   // Calculate the average rating of the product
   const rating = Math.round(product.rating.reduce((acc, curr) => acc + curr.rating, 0) / product.rating.length);
@@ -40,6 +47,21 @@ const ProductCard = ({ product, compact = false }) => {
     toast.success('Đã thêm sản phẩm vào giỏ hàng')
   }
 
+  const handleWishlistToggle = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (!isLoaded) return
+
+    if (!user) {
+      await openSignIn({ redirectUrl: window.location.pathname })
+      return
+    }
+
+    dispatch(toggleWishlistItem({ productId: product.id }))
+    toast.success(isWishlisted ? 'Đã bỏ khỏi yêu thích' : 'Đã thêm vào yêu thích')
+  }
+
   return (
     <div className={`group relative ${compact ? 'block w-full' : 'max-xl:mx-auto'}`}>
       <Link href={`/product/${product.id}`} className="block">
@@ -51,6 +73,20 @@ const ProductCard = ({ product, compact = false }) => {
               </div>
             </div>
           )}
+          <div className="absolute right-1 top-2 z-10 translate-x-[160%] transition-transform duration-300 group-hover:translate-x-0">
+            <button
+              type="button"
+              onClick={handleWishlistToggle}
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              className="flex items-center justify-center text-red-500 drop-shadow-sm transition duration-200 hover:scale-115 hover:-rotate-6 active:scale-95 active:rotate-0"
+            >
+              <HeartIcon
+                size={22}
+                strokeWidth={2}
+                className={`transition-all duration-200 ${isWishlisted ? 'fill-red-500 text-red-500 scale-115' : 'fill-transparent text-red-500'} group-hover:[filter:drop-shadow(0_3px_8px_rgba(239,68,68,0.28))]`}
+              />
+            </button>
+          </div>
           <Image
             width={500}
             height={500}
