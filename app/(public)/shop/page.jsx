@@ -16,14 +16,10 @@ function ShopContent() {
   const initialCategory = searchParams.get('category') || ''
   const router = useRouter()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
-
   const products = useSelector(state => state.product.list)
 
   const priceBounds = useMemo(() => {
-    if (!products.length) {
-      return { min: 0, max: 0 }
-    }
-
+    if (!products.length) return { min: 0, max: 0 }
     const prices = products.map((product) => product.price)
     return {
       min: Math.floor(Math.min(...prices)),
@@ -128,30 +124,37 @@ function ShopContent() {
   }
 
   return (
-    <div className="min-h-[70vh] mx-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 onClick={() => router.push('/shop')} className="text-2xl text-slate-500 my-6 flex items-center gap-2 cursor-pointer">
+    <div className="min-h-[70vh] px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <h1 onClick={() => router.push('/shop')} className="my-6 flex cursor-pointer flex-wrap items-center gap-2 text-xl text-slate-500 sm:text-2xl">
           {search && <MoveLeftIcon size={20} />}
-          Tất cả <span className="text-slate-700 font-medium">Sản phẩm</span>
+          Tất cả <span className="font-medium text-slate-700">Sản phẩm</span>
         </h1>
 
-        <div className="grid gap-10 xl:gap-14 lg:grid-cols-[minmax(0,1fr)_320px] items-start mb-32">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:gap-x-10 sm:gap-y-12 xl:grid-cols-3 2xl:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="mx-auto w-full max-w-[210px] sm:max-w-[220px] xl:max-w-[210px] 2xl:max-w-[220px]">
-                <ProductCard product={product} compact />
-              </div>
-            ))}
-            {!filteredProducts.length && (
-              <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-500">
-                Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại.
-              </div>
-            )}
+        <div className="mb-20 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10 xl:gap-14">
+          <div className="order-2 lg:order-1">
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              {selectedCategory && <span className="rounded-full bg-slate-100 px-3 py-1">Danh mục: {selectedCategory}</span>}
+              {inStockOnly && <span className="rounded-full bg-slate-100 px-3 py-1">Còn hàng</span>}
+              {minRating > 0 && <span className="rounded-full bg-slate-100 px-3 py-1">Đánh giá: {minRating}+</span>}
+            </div>
+
+            <div className="grid grid-cols-2 justify-items-center gap-x-4 gap-y-8 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8 xl:grid-cols-3 2xl:grid-cols-4">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} compact />
+              ))}
+
+              {!filteredProducts.length && (
+                <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-500">
+                  Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại.
+                </div>
+              )}
+            </div>
           </div>
 
-          <aside className="lg:sticky lg:top-24 lg:pl-2 xl:pl-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
+          <aside className="order-1 lg:order-2 lg:sticky lg:top-24">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-800">Bộ lọc sản phẩm</h2>
                   <p className="text-sm text-slate-500">Tinh chỉnh danh sách theo nhu cầu của bạn</p>
@@ -159,7 +162,7 @@ function ShopContent() {
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition"
+                  className="inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-800"
                 >
                   <RotateCcwIcon size={14} />
                 </button>
@@ -186,7 +189,7 @@ function ShopContent() {
                 </section>
 
                 <section>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <h3 className="text-sm font-medium text-slate-800">Khoảng giá</h3>
                     <p className="text-sm text-slate-500">
                       {formatMoney(minPrice, currency)} - {formatMoney(maxPrice, currency)}
@@ -294,7 +297,7 @@ function ShopContent() {
 
 export default function Shop() {
   return (
-    <Suspense fallback={<div>Loading shop...</div>}>
+    <Suspense fallback={<div className="px-6 py-10">Loading shop...</div>}>
       <ShopContent />
     </Suspense>
   );

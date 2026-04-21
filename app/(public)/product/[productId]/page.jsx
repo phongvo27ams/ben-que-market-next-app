@@ -13,42 +13,39 @@ export default function Product() {
   const [product, setProduct] = useState();
   const products = useSelector(state => state.product.list);
 
-  const fetchProduct = async () => {
-    const product = products.find((product) => product.id === productId);
-    setProduct(product);
-  }
-
   useEffect(() => {
     if (products.length > 0) {
-      fetchProduct()
+      setProduct(products.find((item) => item.id === productId));
     }
-    scrollTo(0, 0)
+    scrollTo(0, 0);
   }, [productId, products]);
 
   return (
-    <div className="mx-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-gray-600 text-sm mt-8 mb-5 flex flex-wrap items-center gap-2">
-          <Link href="/" className="hover:text-slate-900 transition">
+    <div className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-5 mt-6 flex flex-wrap items-center gap-2 text-xs text-gray-600 sm:mt-8 sm:text-sm">
+          <Link href="/" className="transition hover:text-slate-900">
             Trang chủ
           </Link>
           <span>/</span>
-          <Link href="/shop" className="hover:text-slate-900 transition">
+          <Link href="/shop" className="transition hover:text-slate-900">
             Sản phẩm
           </Link>
-          <span>/</span>
           {product?.category && (
-            <Link
-              href={`/shop?category=${encodeURIComponent(product.category)}`}
-              className="hover:text-slate-900 transition"
-            >
-              {product.category}
-            </Link>
+            <>
+              <span>/</span>
+              <Link
+                href={`/shop?category=${encodeURIComponent(product.category)}`}
+                className="transition hover:text-slate-900"
+              >
+                {product.category}
+              </Link>
+            </>
           )}
         </div>
 
-        {product && (<ProductDetails product={product} />)}
-        {product && (<ProductDescription product={product} />)}
+        {product && <ProductDetails product={product} />}
+        {product && <ProductDescription product={product} />}
       </div>
     </div>
   );

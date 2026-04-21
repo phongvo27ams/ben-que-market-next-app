@@ -12,11 +12,11 @@ const BestSelling = ({ products = [], selectedCategory = null }) => {
   const categorySuffix = selectedCategory ? ` cho danh mục "${selectedCategory}"` : "";
 
   return (
-    <div className='px-6 my-30 max-w-6xl mx-auto'>
+    <div className='mx-auto my-16 max-w-6xl px-4 sm:my-24 sm:px-6'>
       <Title title='Sản phẩm bán chạy' description={`Hiển thị ${bestSellingProducts.length} trong số ${products.length} sản phẩm${categorySuffix}`} href='/shop' />
-      <div className='mt-12  grid grid-cols-2 sm:flex flex-wrap gap-6 xl:gap-12'>
+      <div className='mt-8 grid grid-cols-2 justify-items-center gap-x-4 gap-y-8 sm:mt-12 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8 xl:gap-x-10'>
         {bestSellingProducts.map((product, index) => (
-          <ProductCard key={index} product={product} />
+          <ProductCard key={index} product={product} compact />
         ))}
       </div>
     </div>
