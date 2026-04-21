@@ -1,12 +1,13 @@
 'use client'
 
-import { HeartIcon, StarIcon } from 'lucide-react'
+import { CopyIcon, HeartIcon, StarIcon } from 'lucide-react'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
+
 import { addToCart } from '../lib/features/cart/cartSlice'
 import { toggleWishlistItem } from '../lib/features/wishlist/wishlistSlice'
 import { formatMoney } from "../lib/format"
@@ -26,8 +27,9 @@ const ProductCard = ({ product, compact = false }) => {
   const currentCartQuantity = cartItems[product.id] || 0
   const isWishlisted = wishlistItems.includes(product.id)
 
-  // Calculate the average rating of the product
-  const rating = Math.round(product.rating.reduce((acc, curr) => acc + curr.rating, 0) / product.rating.length);
+  const rating = Math.round(
+    product.rating.reduce((acc, curr) => acc + curr.rating, 0) / product.rating.length
+  )
 
   const handleBuyNow = (event) => {
     event.preventDefault()
@@ -62,10 +64,22 @@ const ProductCard = ({ product, compact = false }) => {
     toast.success(isWishlisted ? 'Đã bỏ khỏi yêu thích' : 'Đã thêm vào yêu thích')
   }
 
+  const handleCopyLink = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/product/${product.id}`)
+      toast.success('Đã sao chép link sản phẩm')
+    } catch {
+      toast.error('Không thể sao chép link sản phẩm')
+    }
+  }
+
   return (
     <div className={`group relative ${compact ? 'block w-full' : 'max-xl:mx-auto'}`}>
       <Link href={`/product/${product.id}`} className="block">
-        <div className={`relative overflow-hidden rounded-lg bg-[#F5F5F5] flex items-center justify-center ${compact ? 'h-36 w-full sm:h-56 px-3' : 'h-40 sm:w-60 sm:h-68'}`}>
+        <div className={`relative flex items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F5] ${compact ? 'h-36 w-full px-3 sm:h-56' : 'h-40 sm:h-68 sm:w-60'}`}>
           {isDiscounted && (
             <div className="absolute left-0 top-0 z-10 -translate-x-[110%] transition-transform duration-300 group-hover:translate-x-0">
               <div className="rounded-br-xl bg-green-600 px-3 py-2 text-xs font-semibold text-white shadow-sm">
@@ -73,24 +87,39 @@ const ProductCard = ({ product, compact = false }) => {
               </div>
             </div>
           )}
-          <div className="absolute right-1 top-2 z-10 translate-x-[160%] transition-transform duration-300 group-hover:translate-x-0">
+
+          <div className="absolute right-1 top-2 z-10 flex items-center gap-2 translate-x-[180%] transition-transform duration-300 group-hover:translate-x-0">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              aria-label="Copy product link"
+              className="flex items-center justify-center text-sky-600 drop-shadow-sm transition duration-200 hover:-rotate-6 hover:scale-115 active:rotate-0 active:scale-95"
+            >
+              <CopyIcon
+                size={20}
+                strokeWidth={2}
+                className="transition-all duration-200 group-hover:[filter:drop-shadow(0_3px_8px_rgba(14,165,233,0.28))]"
+              />
+            </button>
+
             <button
               type="button"
               onClick={handleWishlistToggle}
               aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              className="flex items-center justify-center text-red-500 drop-shadow-sm transition duration-200 hover:scale-115 hover:-rotate-6 active:scale-95 active:rotate-0"
+              className="flex items-center justify-center text-red-500 drop-shadow-sm transition duration-200 hover:-rotate-6 hover:scale-115 active:rotate-0 active:scale-95"
             >
               <HeartIcon
                 size={22}
                 strokeWidth={2}
-                className={`transition-all duration-200 ${isWishlisted ? 'fill-red-500 text-red-500 scale-115' : 'fill-transparent text-red-500'} group-hover:[filter:drop-shadow(0_3px_8px_rgba(239,68,68,0.28))]`}
+                className={`transition-all duration-200 ${isWishlisted ? 'scale-115 fill-red-500 text-red-500' : 'fill-transparent text-red-500'} group-hover:[filter:drop-shadow(0_3px_8px_rgba(239,68,68,0.28))]`}
               />
             </button>
           </div>
+
           <Image
             width={500}
             height={500}
-            className={`${compact ? 'max-h-24 sm:max-h-32' : 'max-h-30 sm:max-h-40'} w-auto group-hover:scale-115 transition duration-300`}
+            className={`${compact ? 'max-h-24 sm:max-h-32' : 'max-h-30 sm:max-h-40'} w-auto transition duration-300 group-hover:scale-115`}
             src={product.images[0]}
             alt={product.name}
           />
@@ -108,7 +137,7 @@ const ProductCard = ({ product, compact = false }) => {
         </div>
 
         <div className={`flex justify-between gap-3 pt-2 text-sm text-slate-800 ${compact ? 'w-full' : 'max-w-60'}`}>
-          <div className='flex-1 min-w-0'>
+          <div className='min-w-0 flex-1'>
             <p className={compact ? 'line-clamp-2' : ''}>{product.name}</p>
 
             <div className='flex'>
@@ -116,14 +145,14 @@ const ProductCard = ({ product, compact = false }) => {
                 <StarIcon
                   key={index}
                   size={14}
-                  className='text-transparent mt-0.5'
+                  className='mt-0.5 text-transparent'
                   fill={rating >= index + 1 ? "#00C950" : "#D1D5DB"}
                 />
               ))}
             </div>
           </div>
 
-          <div className='whitespace-nowrap flex-shrink-0 text-right'>
+          <div className='whitespace-nowrap text-right flex-shrink-0'>
             <p className='font-semibold text-green-600'>
               {formatMoney(product.price, currency)}
             </p>
