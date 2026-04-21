@@ -14,9 +14,10 @@ function ShopContent() {
   const search = searchParams.get('search') || ''
   const initialSort = searchParams.get('sort') || 'latest'
   const initialCategory = searchParams.get('category') || ''
+  const initialOrigin = searchParams.get('origin') || ''
   const router = useRouter()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
-  const products = useSelector(state => state.product.list)
+  const products = useSelector((state) => state.product.list)
 
   const priceBounds = useMemo(() => {
     if (!products.length) return { min: 0, max: 0 }
@@ -27,7 +28,12 @@ function ShopContent() {
     }
   }, [products])
 
+  const origins = useMemo(() => {
+    return [...new Set(products.map((product) => product.origin).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  }, [products])
+
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
+  const [selectedOrigin, setSelectedOrigin] = useState(initialOrigin)
   const [minPrice, setMinPrice] = useState(priceBounds.min)
   const [maxPrice, setMaxPrice] = useState(priceBounds.max)
   const [sortBy, setSortBy] = useState(initialSort)
@@ -47,6 +53,10 @@ function ShopContent() {
     setSelectedCategory(initialCategory)
   }, [initialCategory])
 
+  useEffect(() => {
+    setSelectedOrigin(initialOrigin)
+  }, [initialOrigin])
+
   const filteredProducts = useMemo(() => {
     let nextProducts = [...products]
 
@@ -58,6 +68,10 @@ function ShopContent() {
 
     if (selectedCategory) {
       nextProducts = nextProducts.filter((product) => product.category === selectedCategory)
+    }
+
+    if (selectedOrigin) {
+      nextProducts = nextProducts.filter((product) => product.origin === selectedOrigin)
     }
 
     nextProducts = nextProducts.filter((product) => product.price >= minPrice && product.price <= maxPrice)
@@ -101,10 +115,11 @@ function ShopContent() {
     }
 
     return nextProducts
-  }, [products, search, selectedCategory, minPrice, maxPrice, inStockOnly, minRating, sortBy])
+  }, [products, search, selectedCategory, selectedOrigin, minPrice, maxPrice, inStockOnly, minRating, sortBy])
 
   const resetFilters = () => {
     setSelectedCategory('')
+    setSelectedOrigin('')
     setMinPrice(priceBounds.min)
     setMaxPrice(priceBounds.max)
     setSortBy('latest')
@@ -135,6 +150,7 @@ function ShopContent() {
           <div className="order-2 lg:order-1">
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               {selectedCategory && <span className="rounded-full bg-slate-100 px-3 py-1">Danh mục: {selectedCategory}</span>}
+              {selectedOrigin && <span className="rounded-full bg-slate-100 px-3 py-1">Xuất xứ: {selectedOrigin}</span>}
               {inStockOnly && <span className="rounded-full bg-slate-100 px-3 py-1">Còn hàng</span>}
               {minRating > 0 && <span className="rounded-full bg-slate-100 px-3 py-1">Đánh giá: {minRating}+</span>}
             </div>
@@ -186,6 +202,20 @@ function ShopContent() {
                       </button>
                     ))}
                   </div>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Xuất xứ</h3>
+                  <select
+                    value={selectedOrigin}
+                    onChange={(e) => setSelectedOrigin(e.target.value)}
+                    className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none"
+                  >
+                    <option value="">Tất cả xuất xứ</option>
+                    {origins.map((origin) => (
+                      <option key={origin} value={origin}>{origin}</option>
+                    ))}
+                  </select>
                 </section>
 
                 <section>
