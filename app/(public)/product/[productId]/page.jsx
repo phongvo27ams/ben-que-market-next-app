@@ -1,5 +1,6 @@
 'use client'
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -27,16 +28,26 @@ export default function Product() {
   return (
     <div className="mx-6">
       <div className="max-w-7xl mx-auto">
-
-        {/* Breadcrums */}
-        <div className="  text-gray-600 text-sm mt-8 mb-5">
-          Trang chủ / Sản phẩm / {product?.category}
+        <div className="text-gray-600 text-sm mt-8 mb-5 flex flex-wrap items-center gap-2">
+          <Link href="/" className="hover:text-slate-900 transition">
+            Trang chủ
+          </Link>
+          <span>/</span>
+          <Link href="/shop" className="hover:text-slate-900 transition">
+            Sản phẩm
+          </Link>
+          <span>/</span>
+          {product?.category && (
+            <Link
+              href={`/shop?category=${encodeURIComponent(product.category)}`}
+              className="hover:text-slate-900 transition"
+            >
+              {product.category}
+            </Link>
+          )}
         </div>
 
-        {/* Product Details */}
         {product && (<ProductDetails product={product} />)}
-
-        {/* Description & Reviews */}
         {product && (<ProductDescription product={product} />)}
       </div>
     </div>

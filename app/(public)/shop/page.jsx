@@ -12,6 +12,8 @@ import { formatMoney } from "../../../lib/format"
 function ShopContent() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search') || ''
+  const initialSort = searchParams.get('sort') || 'latest'
+  const initialCategory = searchParams.get('category') || ''
   const router = useRouter()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
@@ -29,10 +31,10 @@ function ShopContent() {
     }
   }, [products])
 
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [minPrice, setMinPrice] = useState(priceBounds.min)
   const [maxPrice, setMaxPrice] = useState(priceBounds.max)
-  const [sortBy, setSortBy] = useState('latest')
+  const [sortBy, setSortBy] = useState(initialSort)
   const [inStockOnly, setInStockOnly] = useState(false)
   const [minRating, setMinRating] = useState(0)
 
@@ -40,6 +42,14 @@ function ShopContent() {
     setMinPrice(priceBounds.min)
     setMaxPrice(priceBounds.max)
   }, [priceBounds.min, priceBounds.max])
+
+  useEffect(() => {
+    setSortBy(initialSort)
+  }, [initialSort])
+
+  useEffect(() => {
+    setSelectedCategory(initialCategory)
+  }, [initialCategory])
 
   const filteredProducts = useMemo(() => {
     let nextProducts = [...products]
@@ -57,7 +67,7 @@ function ShopContent() {
     nextProducts = nextProducts.filter((product) => product.price >= minPrice && product.price <= maxPrice)
 
     if (inStockOnly) {
-      nextProducts = nextProducts.filter((product) => product.inStock)
+      nextProducts = nextProducts.filter((product) => product.inStock > 0)
     }
 
     if (minRating > 0) {
@@ -83,6 +93,13 @@ function ShopContent() {
           return ratingB - ratingA
         })
         break
+      case 'discount-desc':
+        nextProducts.sort((a, b) => {
+          const discountA = a.mrp > a.price ? ((a.mrp - a.price) / a.mrp) * 100 : 0
+          const discountB = b.mrp > b.price ? ((b.mrp - b.price) / b.mrp) * 100 : 0
+          return discountB - discountA
+        })
+        break
       default:
         nextProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     }
@@ -97,6 +114,7 @@ function ShopContent() {
     setSortBy('latest')
     setInStockOnly(false)
     setMinRating(0)
+    router.push('/shop')
   }
 
   const handleMinPriceChange = (value) => {
@@ -144,7 +162,6 @@ function ShopContent() {
                   className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition"
                 >
                   <RotateCcwIcon size={14} />
-                  Đặt lại
                 </button>
               </div>
 
@@ -232,6 +249,7 @@ function ShopContent() {
                     <option value="price-asc">Giá tăng dần</option>
                     <option value="price-desc">Giá giảm dần</option>
                     <option value="rating">Đánh giá cao nhất</option>
+                    <option value="discount-desc">Giảm giá sâu nhất</option>
                   </select>
                 </section>
 
