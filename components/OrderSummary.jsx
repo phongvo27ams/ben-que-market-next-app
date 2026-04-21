@@ -16,10 +16,9 @@ const OrderSummary = ({ totalPrice, items }) => {
   const dispatch = useDispatch();
 
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "$";
-
   const router = useRouter();
-
   const addressList = useSelector(state => state.address.list);
+  const shippingFee = 50000;
 
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -32,7 +31,7 @@ const OrderSummary = ({ totalPrice, items }) => {
 
     try {
       if (!user) {
-        return toast.error("Please login to apply coupon");
+        return toast.error("Vui lòng đăng nhập để áp dụng mã giảm giá");
       }
 
       const token = await getToken();
@@ -41,7 +40,7 @@ const OrderSummary = ({ totalPrice, items }) => {
       });
 
       setCoupon(data.coupon);
-      toast.success("Coupon applied successfully");
+      toast.success("Áp dụng mã giảm giá thành công");
     } catch (error) {
       console.error("Error applying coupon:", error);
       toast.error(error?.response?.data?.error || error.message);
@@ -53,11 +52,11 @@ const OrderSummary = ({ totalPrice, items }) => {
 
     try {
       if (!user) {
-        return toast.error("Please login to place order");
+        return toast.error("Vui lòng đăng nhập để đặt hàng");
       }
 
       if (!selectedAddress) {
-        return toast.error("Please select an address to place order");
+        return toast.error("Vui lòng chọn địa chỉ nhận hàng");
       }
 
       const token = await getToken();
@@ -72,7 +71,6 @@ const OrderSummary = ({ totalPrice, items }) => {
         orderData.couponCode = coupon.code;
       }
 
-      // Create the order
       const { data } = await axios.post("/api/orders", orderData, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,26 +89,26 @@ const OrderSummary = ({ totalPrice, items }) => {
   }
 
   return (
-    <div className='w-full max-w-lg lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7'>
-      <h2 className='text-xl font-medium text-slate-600'>Payment Summary</h2>
+    <div className='w-full max-w-lg rounded-xl border border-slate-200 bg-slate-50/30 p-7 text-sm text-slate-500 lg:max-w-[340px]'>
+      <h2 className='text-xl font-medium text-slate-600'>Tóm tắt thanh toán</h2>
 
-      <p className='text-slate-400 text-xs my-4'>Payment Method</p>
+      <p className='my-4 text-xs text-slate-400'>Phương thức thanh toán</p>
 
-      <div className='flex gap-2 items-center'>
+      <div className='flex items-center gap-2'>
         <input type="radio" id="COD" onChange={() => setPaymentMethod('COD')} checked={paymentMethod === 'COD'} className='accent-gray-500' />
-        <label htmlFor="COD" className='cursor-pointer'>COD</label>
+        <label htmlFor="COD" className='cursor-pointer'>Thanh toán khi nhận hàng</label>
       </div>
 
-      <div className='flex gap-2 items-center mt-1'>
+      <div className='mt-1 flex items-center gap-2'>
         <input type="radio" id="STRIPE" name='payment' onChange={() => setPaymentMethod('STRIPE')} checked={paymentMethod === 'STRIPE'} className='accent-gray-500' />
-        <label htmlFor="STRIPE" className='cursor-pointer'>Stripe Payment</label>
+        <label htmlFor="STRIPE" className='cursor-pointer'>Thanh toán qua Stripe</label>
       </div>
 
-      <div className='my-4 py-4 border-y border-slate-200 text-slate-400'>
-        <p>Address</p>
+      <div className='my-4 border-y border-slate-200 py-4 text-slate-400'>
+        <p>Địa chỉ nhận hàng</p>
         {
           selectedAddress ? (
-            <div className='flex gap-2 items-center'>
+            <div className='flex items-center gap-2'>
               <p>{selectedAddress.name}, {selectedAddress.city}, {selectedAddress.state}, {selectedAddress.zip}</p>
               <SquarePenIcon onClick={() => setSelectedAddress(null)} className='cursor-pointer' size={18} />
             </div>
@@ -118,8 +116,8 @@ const OrderSummary = ({ totalPrice, items }) => {
             <div>
               {
                 addressList.length > 0 && (
-                  <select className='border border-slate-400 p-2 w-full my-3 outline-none rounded' onChange={(e) => setSelectedAddress(addressList[e.target.value])} >
-                    <option value="">Select Address</option>
+                  <select className='my-3 w-full rounded border border-slate-400 p-2 outline-none' onChange={(e) => setSelectedAddress(addressList[e.target.value])} >
+                    <option value="">Chọn địa chỉ</option>
                     {
                       addressList.map((address, index) => (
                         <option key={index} value={index}>{address.name}, {address.city}, {address.state}, {address.zip}</option>
@@ -129,58 +127,55 @@ const OrderSummary = ({ totalPrice, items }) => {
                 )
               }
 
-              <button className='flex items-center gap-1 text-slate-600 mt-1' onClick={() => setShowAddressModal(true)}>Add Address <PlusIcon size={18} /></button>
+              <button className='mt-1 flex items-center gap-1 text-slate-600' onClick={() => setShowAddressModal(true)}>Thêm địa chỉ <PlusIcon size={18} /></button>
             </div>
           )
         }
       </div>
 
-      <div className='pb-4 border-b border-slate-200'>
+      <div className='border-b border-slate-200 pb-4'>
         <div className='flex justify-between'>
           <div className='flex flex-col gap-1 text-slate-400'>
-            <p>Subtotal:</p>
-            <p>Shipping:</p>
-            {coupon && <p>Coupon:</p>}
+            <p>Tạm tính:</p>
+            <p>Phí vận chuyển:</p>
+            {coupon && <p>Mã giảm giá:</p>}
           </div>
 
-          <div className='flex flex-col gap-1 font-medium text-right'>
+          <div className='flex flex-col gap-1 text-right font-medium'>
             <p>{formatMoney(totalPrice, currency)}</p>
 
-            <Protect plan={'plus'} fallback={formatMoney(5, currency)}>
-              <p>Free</p>
+            <Protect plan={'plus'} fallback={formatMoney(shippingFee, currency)}>
+              <p>Miễn phí</p>
             </Protect>
 
             {coupon && <p>{`-${formatMoney((coupon.discount / 100) * totalPrice, currency)}`}</p>}
           </div>
         </div>
-        {
-          !coupon ? (
-            <form onSubmit={e => toast.promise(handleCouponCode(e), { loading: 'Checking Coupon...' })} className='flex justify-center gap-3 mt-3'>
-              <input onChange={(e) => setCouponCodeInput(e.target.value)} value={couponCodeInput} type="text" placeholder='Coupon Code' className='border border-slate-400 p-1.5 rounded w-full outline-none' />
 
-              <button className='bg-slate-600 text-white px-3 rounded hover:bg-slate-800 active:scale-95 transition-all'>Apply</button>
-            </form>
-          ) : (
-            <div className='w-full flex items-center justify-center gap-2 text-xs mt-2'>
-              <p>Code: <span className='font-semibold ml-1'>{coupon.code.toUpperCase()}</span></p>
-              <p>{coupon.description}</p>
-              <XIcon size={18} onClick={() => setCoupon('')} className='hover:text-red-700 transition cursor-pointer' />
-            </div>
-          )
-        }
+        {!coupon ? (
+          <form onSubmit={e => toast.promise(handleCouponCode(e), { loading: 'Đang kiểm tra mã...' })} className='mt-3 flex justify-center gap-3'>
+            <input onChange={(e) => setCouponCodeInput(e.target.value)} value={couponCodeInput} type="text" placeholder='Mã giảm giá' className='w-full rounded border border-slate-400 p-1.5 outline-none' />
+            <button className='min-w-fit whitespace-nowrap rounded bg-slate-600 px-3 text-white transition-all hover:bg-slate-800 active:scale-95'>Áp dụng</button>
+          </form>
+        ) : (
+          <div className='mt-2 flex w-full items-center justify-center gap-2 text-xs'>
+            <p>Mã: <span className='ml-1 font-semibold'>{coupon.code.toUpperCase()}</span></p>
+            <p>{coupon.description}</p>
+            <XIcon size={18} onClick={() => setCoupon('')} className='cursor-pointer transition hover:text-red-700' />
+          </div>
+        )}
       </div>
 
       <div className='flex justify-between py-4'>
-        <p>Total:</p>
-        <p className='font-medium text-right'>
-          {/* Using Protect to conditionally show total price based on plan */}
+        <p>Tổng cộng:</p>
+        <p className='text-right font-medium'>
           <Protect plan={'plus'} fallback={`${coupon ? formatMoney(totalPrice + 5 - (coupon.discount / 100) * totalPrice, currency) : formatMoney(totalPrice + 5, currency)}`}>
             {coupon ? formatMoney(totalPrice - (coupon.discount / 100) * totalPrice, currency) : formatMoney(totalPrice, currency)}
           </Protect>
         </p>
       </div>
 
-      <button onClick={e => toast.promise(handlePlaceOrder(e), { loading: 'Placing order...' })} className='w-full bg-slate-700 text-white py-2.5 rounded hover:bg-slate-900 active:scale-95 transition-all'>Place Order</button>
+      <button onClick={e => toast.promise(handlePlaceOrder(e), { loading: 'Đang đặt hàng...' })} className='w-full rounded bg-slate-700 py-2.5 text-white transition-all hover:bg-slate-900 active:scale-95'>Đặt hàng</button>
 
       {showAddressModal && <AddressModal setShowAddressModal={setShowAddressModal} />}
     </div>

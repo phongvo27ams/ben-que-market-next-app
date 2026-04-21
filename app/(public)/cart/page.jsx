@@ -51,30 +51,32 @@ export default function Cart() {
   return cartArray.length > 0 ? (
     <div className="mx-6 min-h-screen text-slate-800">
       <div className="mx-auto max-w-7xl">
-        <PageTitle heading="My Cart" text="items in your cart" linkText="Add more" />
+        <PageTitle heading="Giỏ hàng" text="những sản phẩm bạn đã chọn" linkText="Mua thêm" />
 
         <div className="flex items-start justify-between gap-5 max-lg:flex-col">
           <table className="w-full max-w-4xl table-auto text-slate-600">
             <thead>
               <tr className="max-sm:text-sm">
-                <th className="text-left">Product</th>
-                <th>Quantity</th>
-                <th>Total Price</th>
-                <th className="max-md:hidden">Remove</th>
+                <th className="text-left">Sản phẩm</th>
+                <th>Số lượng</th>
+                <th>Thành tiền</th>
+                <th className="max-md:hidden">Xóa</th>
               </tr>
             </thead>
             <tbody>
               {cartArray.map((item, index) => (
                 <tr key={index} className="space-x-2">
                   <td className="my-4 flex gap-3">
-                    <div className="flex size-18 items-center justify-center gap-3 rounded-md bg-slate-100">
-                      <Image src={item.images[0]} className="h-14 w-auto" alt={item.name} width={45} height={45} />
-                    </div>
-                    <div>
-                      <p className="max-sm:text-sm">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.category}</p>
-                      <p>{formatMoney(item.price)}</p>
-                    </div>
+                    <Link href={`/product/${item.id}`} className="flex gap-3">
+                      <div className="flex size-18 items-center justify-center gap-3 rounded-md bg-slate-100 transition hover:bg-slate-200">
+                        <Image src={item.images[0]} className="h-14 w-auto" alt={item.name} width={45} height={45} />
+                      </div>
+                      <div>
+                        <p className="max-sm:text-sm transition hover:text-green-600">{item.name}</p>
+                        <p className="text-xs text-slate-500">{item.category}</p>
+                        <p>{formatMoney(item.price)}</p>
+                      </div>
+                    </Link>
                   </td>
                   <td className="text-center">
                     <Counter productId={item.id} maxStock={item.inStock} />
