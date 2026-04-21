@@ -50,10 +50,10 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
             </button>
           </div>
 
-          <div className='relative z-10 flex justify-center px-4 pb-2 sm:px-8 sm:pb-0 xl:absolute xl:bottom-0 xl:right-0 xl:w-[52%]'>
-            <div className='absolute bottom-8 h-24 w-40 rounded-full bg-emerald-950/15 blur-2xl sm:h-28 sm:w-52' />
+          <div className='relative z-10 flex justify-center px-4 pb-2 sm:px-8 sm:pb-0 xl:absolute xl:bottom-0 xl:right-0 xl:w-[60%]'>
+            <div className='absolute bottom-8 h-28 w-44 rounded-full bg-emerald-950/15 blur-2xl sm:h-32 sm:w-60' />
             <Image
-              className='h-auto w-full max-w-[18rem] drop-shadow-[0_22px_36px_rgba(15,23,42,0.18)] sm:max-w-[22rem] xl:max-w-none'
+              className='h-auto w-full max-w-[21rem] drop-shadow-[0_22px_36px_rgba(15,23,42,0.18)] sm:max-w-[26rem] xl:max-w-[42rem]'
               src={assets.hero_model_img}
               alt='Hero product'
             />

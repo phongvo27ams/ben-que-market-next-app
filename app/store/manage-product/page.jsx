@@ -1,31 +1,22 @@
 'use client'
 
 import axios from "axios"
-import React from "react"
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
 import Image from "next/image"
 import { Pencil, Trash2, X } from "lucide-react"
-import Loading from "../../../components/Loading"
-import { formatMoney } from "../../../lib/format"
 import { useAuth, useUser } from "@clerk/nextjs"
-import { assets } from "../../../assets/assets"
-import RichTextEditor from "../../../components/RichTextEditor"
 
-const stripHtml = (html = "") => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+import Loading from "../../../components/Loading"
+import RichTextEditor from "../../../components/RichTextEditor"
+import { assets, categories } from "../../../assets/assets"
+import { formatMoney } from "../../../lib/format"
+
+const stripHtml = (html = "") => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
 
 export default function StoreManageProducts() {
-  const { getToken } = useAuth();
-  const { user } = useUser();
-  const categories = [
-    "Đặc sản thực phẩm khô",
-    "Trái cây đặc sản theo mùa",
-    "Đồ uống tự nhiên",
-    "Đồ ăn chế biến sẵn",
-    "Đồ thủ công mỹ nghệ",
-    "Quà lưu niệm"
-  ];
-
+  const { getToken } = useAuth()
+  const { user } = useUser()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
   const [loading, setLoading] = useState(true)
@@ -44,39 +35,39 @@ export default function StoreManageProducts() {
 
   const fetchProducts = async () => {
     try {
-      const token = await getToken();
+      const token = await getToken()
       const { data } = await axios.get('/api/store/product', {
         headers: { Authorization: `Bearer ${token}` },
-      });
-      setProducts(data.products.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      })
+      setProducts(data.products.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error fetching products:", error)
       toast.error(error?.response?.data?.error || error.message)
     }
-    setLoading(false);
+    setLoading(false)
   }
 
   const updateStock = async (productId, nextStock) => {
     try {
-      const token = await getToken();
+      const token = await getToken()
       const { data } = await axios.post(`/api/store/stock-toggle`, { productId, inStock: Number(nextStock) }, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      })
 
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
           product.id === productId ? { ...product, inStock: Number(nextStock) } : product
         )
-      );
-      toast.success(data.message);
+      )
+      toast.success(data.message)
     } catch (error) {
-      console.error("Error updating stock status:", error);
-      toast.error(error?.response?.data?.error || error.message);
+      console.error("Error updating stock status:", error)
+      toast.error(error?.response?.data?.error || error.message)
     }
   }
 
   const startEdit = (product) => {
-    setEditingProductId(product.id);
+    setEditingProductId(product.id)
     setEditForm({
       name: product.name,
       description: product.description,
@@ -85,17 +76,17 @@ export default function StoreManageProducts() {
       inStock: product.inStock,
       category: product.category,
       origin: product.origin || "",
-    });
+    })
     setEditImages([
       product.images[0] || null,
       product.images[1] || null,
       product.images[2] || null,
       product.images[3] || null,
-    ]);
+    ])
   }
 
   const cancelEdit = () => {
-    setEditingProductId(null);
+    setEditingProductId(null)
     setEditForm({
       name: "",
       description: "",
@@ -104,44 +95,44 @@ export default function StoreManageProducts() {
       inStock: 0,
       category: "",
       origin: "",
-    });
-    setEditImages([null, null, null, null]);
+    })
+    setEditImages([null, null, null, null])
   }
 
   const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target
     setEditForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+      [name]: value,
+    }))
   }
 
   const updateProduct = async (productId) => {
     try {
-      const token = await getToken();
-      const retainedImages = editImages.filter((image) => typeof image === "string");
-      const newImages = editImages.filter((image) => image instanceof File);
+      const token = await getToken()
+      const retainedImages = editImages.filter((image) => typeof image === "string")
+      const newImages = editImages.filter((image) => image instanceof File)
 
       if (retainedImages.length + newImages.length === 0) {
-        toast.error("Please keep at least one product image");
-        return;
+        toast.error("Please keep at least one product image")
+        return
       }
 
-      const formData = new FormData();
-      formData.append("productId", productId);
-      formData.append("name", editForm.name);
-      formData.append("description", editForm.description);
-      formData.append("mrp", Number(editForm.mrp));
-      formData.append("price", Number(editForm.price));
-      formData.append("inStock", Number(editForm.inStock));
-      formData.append("category", editForm.category);
-      formData.append("origin", editForm.origin);
-      formData.append("retainedImages", JSON.stringify(retainedImages));
-      newImages.forEach((image) => formData.append("newImages", image));
+      const formData = new FormData()
+      formData.append("productId", productId)
+      formData.append("name", editForm.name)
+      formData.append("description", editForm.description)
+      formData.append("mrp", Number(editForm.mrp))
+      formData.append("price", Number(editForm.price))
+      formData.append("inStock", Number(editForm.inStock))
+      formData.append("category", editForm.category)
+      formData.append("origin", editForm.origin)
+      formData.append("retainedImages", JSON.stringify(retainedImages))
+      newImages.forEach((image) => formData.append("newImages", image))
 
       const { data } = await axios.put('/api/store/product', formData, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      })
 
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
@@ -157,64 +148,64 @@ export default function StoreManageProducts() {
               }
             : product
         )
-      );
-      toast.success(data.message);
-      cancelEdit();
+      )
+      toast.success(data.message)
+      cancelEdit()
     } catch (error) {
-      toast.error(error?.response?.data?.error || error.message);
+      toast.error(error?.response?.data?.error || error.message)
     }
   }
 
   const handleEditImageChange = (index, file) => {
     setEditImages((prev) => prev.map((image, currentIndex) => (
       currentIndex === index ? file || null : image
-    )));
+    )))
   }
 
   const removeEditImage = (index) => {
     setEditImages((prev) => prev.map((image, currentIndex) => (
       currentIndex === index ? null : image
-    )));
+    )))
   }
 
   const getEditImagePreview = (image) => {
-    if (!image) return assets.upload_area;
-    if (typeof image === "string") return image;
-    return URL.createObjectURL(image);
+    if (!image) return assets.upload_area
+    if (typeof image === "string") return image
+    return URL.createObjectURL(image)
   }
 
   const deleteProduct = async (productId) => {
     try {
-      const confirmed = window.confirm("Delete this product?");
-      if (!confirmed) return;
+      const confirmed = window.confirm("Delete this product?")
+      if (!confirmed) return
 
-      const token = await getToken();
+      const token = await getToken()
       const { data } = await axios.delete(`/api/store/product?productId=${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      })
 
-      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
+      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId))
       if (editingProductId === productId) {
-        cancelEdit();
+        cancelEdit()
       }
-      toast.success(data.message);
+      toast.success(data.message)
     } catch (error) {
-      toast.error(error?.response?.data?.error || error.message);
+      toast.error(error?.response?.data?.error || error.message)
     }
   }
 
   useEffect(() => {
     if (user) {
-      fetchProducts();
+      fetchProducts()
     }
-  }, [user]);
+  }, [user])
 
   if (loading) return <Loading />
 
   return (
     <>
-      <h1 className="text-2xl text-slate-500 mb-5">Manage <span className="text-slate-800 font-medium">Products</span></h1>
-      <div className="w-full overflow-x-auto lg:overflow-visible rounded-xl ring-1 ring-slate-200 bg-white">
+      <h1 className="mb-5 text-2xl text-slate-500">Manage <span className="font-medium text-slate-800">Products</span></h1>
+      <div className="w-full overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 lg:overflow-visible">
         <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <colgroup>
             <col className="w-[24%]" />
@@ -225,7 +216,7 @@ export default function StoreManageProducts() {
             <col className="w-[10%]" />
             <col className="w-[12%]" />
           </colgroup>
-          <thead className="bg-slate-50 text-gray-700 uppercase tracking-wider">
+          <thead className="bg-slate-50 uppercase tracking-wider text-gray-700">
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Description</th>
@@ -235,14 +226,14 @@ export default function StoreManageProducts() {
               <th className="px-4 py-3 text-center">Stock</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
-        </thead>
-        <tbody className="text-slate-700">
-          {products.map((product) => (
+          </thead>
+          <tbody className="text-slate-700">
+            {products.map((product) => (
               <React.Fragment key={product.id}>
-                <tr key={product.id} className="border-t border-gray-200 align-top hover:bg-gray-50">
+                <tr className="border-t border-gray-200 align-top hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Image width={40} height={40} className='h-10 w-10 flex-none rounded p-1 shadow' src={product.images[0]} alt="" />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Image width={40} height={40} className="h-10 w-10 flex-none rounded p-1 shadow" src={product.images[0]} alt="" />
                       <span className="truncate font-medium text-slate-800">{product.name}</span>
                     </div>
                   </td>
@@ -252,8 +243,8 @@ export default function StoreManageProducts() {
                   <td className="px-4 py-3">
                     <p className="line-clamp-2 break-words text-slate-600">{product.origin || "Chưa cập nhật"}</p>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.mrp, currency)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{formatMoney(product.price, currency)}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{formatMoney(product.mrp, currency)}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{formatMoney(product.price, currency)}</td>
                   <td className="px-4 py-3 text-center">
                     <input
                       type="number"
@@ -268,7 +259,7 @@ export default function StoreManageProducts() {
                       <button
                         type="button"
                         onClick={() => startEdit(product)}
-                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 transition"
+                        className="inline-flex items-center gap-1 text-blue-600 transition hover:text-blue-800"
                       >
                         <Pencil size={16} />
                         Edit
@@ -276,7 +267,7 @@ export default function StoreManageProducts() {
                       <button
                         type="button"
                         onClick={() => toast.promise(deleteProduct(product.id), { loading: "Deleting product..." })}
-                        className="inline-flex items-center gap-1 text-red-500 hover:text-red-700 transition"
+                        className="inline-flex items-center gap-1 text-red-500 transition hover:text-red-700"
                       >
                         <Trash2 size={16} />
                         Delete
@@ -284,6 +275,7 @@ export default function StoreManageProducts() {
                     </div>
                   </td>
                 </tr>
+
                 {editingProductId === product.id && (
                   <tr className="border-t border-gray-200 bg-slate-50">
                     <td colSpan={7} className="overflow-visible p-4">
@@ -331,10 +323,12 @@ export default function StoreManageProducts() {
                             </div>
                             <p className="mt-2 text-xs text-slate-500">Click an image slot to replace it, or press X to remove it.</p>
                           </div>
+
                           <label className="flex flex-col gap-2">
                             Name
                             <input type="text" name="name" value={editForm.name} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
+
                           <label className="flex flex-col gap-2">
                             Category
                             <select name="category" value={editForm.category} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required>
@@ -344,10 +338,12 @@ export default function StoreManageProducts() {
                               ))}
                             </select>
                           </label>
+
                           <label className="flex flex-col gap-2">
                             Origin
                             <input type="text" name="origin" value={editForm.origin} onChange={handleEditChange} placeholder="Vd: Bến Tre, Đồng Tháp, An Giang..." className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
+
                           <div className="flex flex-col gap-2 md:col-span-2">
                             <p>Description</p>
                             <RichTextEditor
@@ -357,14 +353,17 @@ export default function StoreManageProducts() {
                               minHeight={340}
                             />
                           </div>
+
                           <label className="flex flex-col gap-2">
                             Actual Price ({currency})
                             <input type="number" min="0" name="mrp" value={editForm.mrp} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
+
                           <label className="flex flex-col gap-2">
                             Offer Price ({currency})
                             <input type="number" min="0" name="price" value={editForm.price} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
+
                           <label className="flex flex-col gap-2">
                             Stock Quantity
                             <input type="number" min="0" name="inStock" value={editForm.inStock} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
@@ -375,14 +374,14 @@ export default function StoreManageProducts() {
                           <button
                             type="button"
                             onClick={() => toast.promise(updateProduct(product.id), { loading: "Updating product..." })}
-                            className="rounded bg-slate-800 px-5 py-2 text-white hover:bg-slate-900 transition"
+                            className="rounded bg-slate-800 px-5 py-2 text-white transition hover:bg-slate-900"
                           >
                             Save Changes
                           </button>
                           <button
                             type="button"
                             onClick={cancelEdit}
-                            className="rounded border border-slate-200 px-5 py-2 text-slate-700 hover:bg-slate-50 transition"
+                            className="rounded border border-slate-200 px-5 py-2 text-slate-700 transition hover:bg-slate-50"
                           >
                             Cancel
                           </button>

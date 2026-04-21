@@ -1,25 +1,12 @@
 'use client'
 
+import { useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
+import { useAuth } from "@clerk/nextjs";
+import toast from "react-hot-toast";
 import "quill/dist/quill.snow.css";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
-
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, 3, false] }],
-    ["bold", "italic", "underline", "strike"],
-    [{ list: "ordered" }, { list: "bullet" }],
-    ["blockquote", "link"],
-    [{ align: [] }],
-    ["clean"],
-  ],
-  history: {
-    delay: 500,
-    maxStack: 100,
-    userOnly: true,
-  },
-};
 
 const formats = [
   "header",
@@ -30,6 +17,7 @@ const formats = [
   "list",
   "blockquote",
   "link",
+  "image",
   "align",
 ];
 
@@ -39,9 +27,73 @@ export default function RichTextEditor({
   placeholder = "Write here...",
   minHeight = 320,
 }) {
+  const editorRef = useRef(null);
+  const { getToken } = useAuth();
+
+  const modules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["blockquote", "link", "image"],
+        [{ align: [] }],
+        ["clean"],
+      ],
+      handlers: {
+        image: async () => {
+          const input = document.createElement("input");
+          input.setAttribute("type", "file");
+          input.setAttribute("accept", "image/*");
+          input.click();
+
+          input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("image", file);
+
+            try {
+              const token = await getToken();
+              const response = await fetch("/api/store/product/description-image", {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || "Image upload failed");
+              }
+
+              const editor = editorRef.current?.getEditor();
+              if (!editor) return;
+
+              const range = editor.getSelection(true);
+              const insertIndex = range ? range.index : editor.getLength();
+              editor.insertEmbed(insertIndex, "image", data.url, "user");
+              editor.setSelection(insertIndex + 1);
+              toast.success("Đã chèn ảnh vào mô tả");
+            } catch (error) {
+              toast.error(error.message || "Không thể tải ảnh lên");
+            }
+          };
+        },
+      },
+    },
+    history: {
+      delay: 500,
+      maxStack: 100,
+      userOnly: true,
+    },
+  }), [getToken]);
+
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <ReactQuill
+        ref={editorRef}
         theme="snow"
         value={value || ""}
         onChange={onChange}
@@ -101,6 +153,14 @@ export default function RichTextEditor({
         .ql-editor blockquote {
           border-left: 4px solid #cbd5e1;
           color: #475569;
+        }
+
+        .ql-editor img {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          margin: 1rem 0;
+          border-radius: 0.75rem;
         }
       `}</style>
     </div>

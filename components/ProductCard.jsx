@@ -1,10 +1,10 @@
 'use client'
 
-import { CopyIcon, HeartIcon, StarIcon } from 'lucide-react'
+import { useState } from 'react'
+import { CopyIcon, HeartIcon, LoaderCircleIcon, StarIcon } from 'lucide-react'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
-import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 
@@ -13,6 +13,7 @@ import { toggleWishlistItem } from '../lib/features/wishlist/wishlistSlice'
 import { formatMoney } from "../lib/format"
 
 const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
+  const [imageLoading, setImageLoading] = useState(true)
   const dispatch = useDispatch()
   const cartItems = useSelector((state) => state.cart.cartItems)
   const wishlistItems = useSelector((state) => state.wishlist.items)
@@ -116,12 +117,20 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
             </button>
           </div>
 
+          {imageLoading && (
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-[#F5F5F5]">
+              <LoaderCircleIcon className="animate-spin text-slate-400" size={30} />
+            </div>
+          )}
+
           <Image
             width={500}
             height={500}
-            className={`${compact ? 'max-h-24 sm:max-h-32' : 'max-h-30 sm:max-h-40'} w-auto transition duration-300 group-hover:scale-115`}
+            className={`${compact ? 'max-h-24 sm:max-h-32' : 'max-h-30 sm:max-h-40'} w-auto transition duration-300 group-hover:scale-115 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
             src={product.images[0]}
             alt={product.name}
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
           />
 
           <div className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16">
@@ -145,31 +154,52 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
         </div>
 
         <div className={`flex justify-between gap-3 pt-2 text-sm text-slate-800 ${compact ? 'w-full' : 'max-w-60'}`}>
-          <div className='min-w-0 flex-1'>
-            <p className={compact ? 'line-clamp-2' : ''}>{product.name}</p>
+          {imageLoading ? (
+            <>
+              <div className='min-w-0 flex-1'>
+                <div className='h-4 w-4/5 animate-pulse rounded bg-slate-200' />
+                <div className='mt-2 h-4 w-3/5 animate-pulse rounded bg-slate-200' />
+                <div className='mt-3 flex gap-1'>
+                  {Array(5).fill('').map((_, index) => (
+                    <div key={index} className='h-3.5 w-3.5 animate-pulse rounded-full bg-slate-200' />
+                  ))}
+                </div>
+              </div>
 
-            <div className='flex'>
-              {Array(5).fill('').map((_, index) => (
-                <StarIcon
-                  key={index}
-                  size={14}
-                  className='mt-0.5 text-transparent'
-                  fill={rating >= index + 1 ? "#00C950" : "#D1D5DB"}
-                />
-              ))}
-            </div>
-          </div>
+              <div className='flex-shrink-0 whitespace-nowrap text-right'>
+                <div className='ml-auto h-4 w-16 animate-pulse rounded bg-slate-200' />
+                {isDiscounted && <div className='mt-2 ml-auto h-3 w-12 animate-pulse rounded bg-slate-200' />}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className='min-w-0 flex-1'>
+                <p className={compact ? 'line-clamp-2' : ''}>{product.name}</p>
 
-          <div className='whitespace-nowrap text-right flex-shrink-0'>
-            <p className='font-semibold text-green-600'>
-              {formatMoney(product.price, currency)}
-            </p>
-            {isDiscounted && (
-              <p className='text-xs text-slate-400 line-through'>
-                {formatMoney(product.mrp, currency)}
-              </p>
-            )}
-          </div>
+                <div className='flex'>
+                  {Array(5).fill('').map((_, index) => (
+                    <StarIcon
+                      key={index}
+                      size={14}
+                      className='mt-0.5 text-transparent'
+                      fill={rating >= index + 1 ? "#00C950" : "#D1D5DB"}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className='whitespace-nowrap text-right flex-shrink-0'>
+                <p className='font-semibold text-green-600'>
+                  {formatMoney(product.price, currency)}
+                </p>
+                {isDiscounted && (
+                  <p className='text-xs text-slate-400 line-through'>
+                    {formatMoney(product.mrp, currency)}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </Link>
     </div>
