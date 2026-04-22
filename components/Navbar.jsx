@@ -116,8 +116,8 @@ const Navbar = () => {
             </Protect>
           </Link>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 text-slate-600 sm:flex lg:gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 text-slate-600 sm:flex xl:gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -129,7 +129,7 @@ const Navbar = () => {
               ))}
             </div>
 
-            <form onSubmit={handleSearch} className="hidden min-w-[220px] max-w-xs flex-1 items-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm xl:flex">
+            <form onSubmit={handleSearch} className="hidden min-w-[180px] max-w-[220px] flex-1 items-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm xl:flex 2xl:max-w-xs">
               <Search size={18} className="shrink-0 text-slate-600" />
               <input
                 className="w-full min-w-0 bg-transparent outline-none placeholder-slate-600"

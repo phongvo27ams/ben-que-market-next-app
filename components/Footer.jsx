@@ -67,7 +67,7 @@ const Footer = () => {
         { text: "Trang chủ", path: "/", icon: null },
         { text: "Tất cả sản phẩm", path: "/shop", icon: null },
         { text: "Trở thành Thành viên Plus", path: "/pricing", icon: null },
-        { text: "Tạo cửa hàng", path: "/create-store", icon: null },
+        // { text: "Tạo cửa hàng", path: "/create-store", icon: null },
       ],
     },
     {

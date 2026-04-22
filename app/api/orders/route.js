@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 const getAvailableStock = (product) => Number(product?.inStock ?? 0);
+const SHIPPING_FEE = 50000;
+const STRIPE_CURRENCY = "vnd";
 
 // Place a new order for the authenticated user
 export async function POST(request) {
@@ -88,7 +90,7 @@ export async function POST(request) {
         }
 
         if (!isPlusMember && !isShippingFeeAdded) {
-          total += 5;
+          total += SHIPPING_FEE;
           isShippingFeeAdded = true;
         }
 
@@ -143,11 +145,11 @@ export async function POST(request) {
         payment_method_types: ["card"],
         line_items: [{
           price_data: {
-            currency: "usd",
+            currency: STRIPE_CURRENCY,
             product_data: {
               name: "Order",
             },
-            unit_amount: Math.round(fullAmount * 100),
+            unit_amount: Math.round(fullAmount),
           },
           quantity: 1,
         }],
