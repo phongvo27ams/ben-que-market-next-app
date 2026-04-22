@@ -169,7 +169,7 @@ const OrderSummary = ({ totalPrice, items }) => {
       <div className='flex justify-between py-4'>
         <p>Tổng cộng:</p>
         <p className='text-right font-medium'>
-          <Protect plan={'plus'} fallback={`${coupon ? formatMoney(totalPrice + 5 - (coupon.discount / 100) * totalPrice, currency) : formatMoney(totalPrice + 5, currency)}`}>
+          <Protect plan={'plus'} fallback={`${coupon ? formatMoney(totalPrice + shippingFee - (coupon.discount / 100) * totalPrice, currency) : formatMoney(totalPrice + shippingFee, currency)}`}>
             {coupon ? formatMoney(totalPrice - (coupon.discount / 100) * totalPrice, currency) : formatMoney(totalPrice, currency)}
           </Protect>
         </p>
