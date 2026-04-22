@@ -71,7 +71,9 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
             <div className='absolute inset-0 opacity-20 [background-image:linear-gradient(225deg,rgba(255,255,255,0.82)_0,rgba(255,255,255,0)_42%)]' />
 
             <div className='relative z-10 min-w-0'>
-              <p className='max-w-[10rem] text-2xl font-semibold leading-tight text-amber-800 sm:text-3xl'>Sản phẩm tốt nhất</p>
+              <p className='max-w-[12rem] text-2xl font-semibold leading-tight text-amber-800 sm:max-w-[13rem] sm:text-3xl'>
+                Sản phẩm tốt nhất
+              </p>
               <p className='mt-3 flex items-center gap-1 text-sm text-slate-700'>
                 Xem thêm <ArrowRightIcon className='transition-all group-hover:ml-2' size={18} />
               </p>
@@ -79,7 +81,7 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
 
             <div className='relative z-10'>
               <div className='absolute inset-x-4 bottom-2 h-6 rounded-full bg-amber-950/15 blur-xl' />
-              <Image className='relative w-28 shrink-0 drop-shadow-[0_12px_24px_rgba(124,45,18,0.18)] sm:w-36' src={assets.hero_product_img1} alt='Best products' />
+              <Image className='relative w-36 shrink-0 drop-shadow-[0_12px_24px_rgba(124,45,18,0.18)] sm:w-48' src={assets.hero_product_img1} alt='Best products' />
             </div>
           </button>
 
@@ -93,7 +95,9 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
             <div className='absolute inset-0 opacity-20 [background-image:linear-gradient(225deg,rgba(255,255,255,0.9)_0,rgba(255,255,255,0)_45%)]' />
 
             <div className='relative z-10 min-w-0'>
-              <p className='max-w-[10rem] text-2xl font-semibold leading-tight text-blue-800 sm:text-3xl'>Giảm giá sâu nhất</p>
+              <p className='max-w-[10rem] text-2xl font-semibold leading-tight text-blue-800 sm:text-3xl'>
+                Giảm giá sâu nhất
+              </p>
               <p className='mt-3 flex items-center gap-1 text-sm text-slate-700'>
                 Xem thêm <ArrowRightIcon className='transition-all group-hover:ml-2' size={18} />
               </p>
@@ -101,7 +105,7 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
 
             <div className='relative z-10'>
               <div className='absolute inset-x-4 bottom-2 h-6 rounded-full bg-sky-950/15 blur-xl' />
-              <Image className='relative w-28 shrink-0 drop-shadow-[0_12px_24px_rgba(30,64,175,0.18)] sm:w-40' src={assets.hero_product_img2} alt='Discount products' />
+              <Image className='relative w-36 shrink-0 drop-shadow-[0_12px_24px_rgba(30,64,175,0.18)] sm:w-52' src={assets.hero_product_img2} alt='Discount products' />
             </div>
           </button>
         </div>

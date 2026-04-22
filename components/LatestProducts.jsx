@@ -4,7 +4,7 @@ import Title from './Title'
 import ProductCard from './ProductCard'
 
 const LatestProducts = ({ products = [], selectedCategory = null }) => {
-  const displayQuantity = 4
+  const displayQuantity = 8
   const latestProducts = products
     .slice()
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
