@@ -1,5 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -16,31 +16,48 @@ model User {
   cart     Json   @default("{}")
   wishlist Json   @default("[]")
 
-  // Relations
   ratings     Rating[]
   Address     Address[]
   store       Store?
-  buyerOrders Order[]   @relation("BuyerRelation")
+  buyerOrders Order[] @relation("BuyerRelation")
 }
 
 model Product {
+  id                   String   @id @default(cuid())
+  name                 String
+  description          String
+  mrp                  Float
+  price                Float
+  images               String[]
+  category             String
+  origin               String   @default("Chưa cập nhật")
+  certification        String   @default("Chưa cập nhật")
+  ocopStars            Int      @default(0)
+  inStock              Int      @default(0)
+  storeId              String
+  productionFacilityId String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  store               Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productionFacility  ProductionFacility @relation(fields: [productionFacilityId], references: [id], onDelete: Restrict)
+  orderItems          OrderItem[]
+  rating              Rating[]
+}
+
+model ProductionFacility {
   id          String   @id @default(cuid())
   name        String
+  address     String
   description String
-  mrp         Float
-  price       Float
-  images      String[]
-  category    String
-  origin      String   @default("Chưa cập nhật")
-  inStock     Int      @default(0)
   storeId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
-  store      Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
-  rating     Rating[]
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([storeId, name, address])
 }
 
 enum OrderStatus {
@@ -70,7 +87,6 @@ model Order {
   coupon        Json          @default("{}")
   orderItems    OrderItem[]
 
-  // Relations
   user    User    @relation("BuyerRelation", fields: [userId], references: [id])
   store   Store   @relation(fields: [storeId], references: [id])
   address Address @relation(fields: [addressId], references: [id])
@@ -82,7 +98,6 @@ model OrderItem {
   quantity  Int
   price     Float
 
-  // Relations
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
@@ -99,7 +114,6 @@ model Rating {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -119,7 +133,6 @@ model Address {
   phone     String
   createdAt DateTime @default(now())
 
-  // Relations
   Order Order[]
   user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -136,21 +149,22 @@ model Coupon {
 }
 
 model Store {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  name        String
-  description String
-  username    String   @unique
-  address     String
-  status      String   @default("pending")
-  isActive    Boolean  @default(false)
-  logo        String
-  email       String
-  contact     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String               @id @default(cuid())
+  userId               String               @unique
+  name                 String
+  description          String
+  username             String               @unique
+  address              String
+  status               String               @default("pending")
+  isActive             Boolean              @default(false)
+  logo                 String
+  email                String
+  contact              String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
-  Product Product[]
-  Order   Order[]
-  user    User      @relation(fields: [userId], references: [id])
+  Product              Product[]
+  Order                Order[]
+  productionFacilities ProductionFacility[]
+  user                 User @relation(fields: [userId], references: [id])
 }

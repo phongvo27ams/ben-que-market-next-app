@@ -15,6 +15,7 @@ const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
@@ -27,6 +28,10 @@ const Navbar = () => {
     { href: "/store", label: "Cửa Hàng", match: (path) => path.startsWith("/store") },
     { href: "/admin", label: "Admin", match: (path) => path.startsWith("/admin") },
   ];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -109,11 +114,13 @@ const Navbar = () => {
             <span className="text-green-600">Bến Quê </span>
             Market
             <span className="text-5xl leading-0 text-green-600">.</span>
-            <Protect plan="plus">
-              <p className="absolute -right-8 -top-1 flex items-center gap-2 rounded-full bg-green-500 px-3 py-0.5 text-xs font-semibold text-white">
-                Plus
-              </p>
-            </Protect>
+            {mounted && (
+              <Protect plan="plus">
+                <p className="absolute -right-8 -top-1 flex items-center gap-2 rounded-full bg-green-500 px-3 py-0.5 text-xs font-semibold text-white">
+                  Plus
+                </p>
+              </Protect>
+            )}
           </Link>
 
           <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 text-slate-600 sm:flex xl:gap-3">
@@ -145,9 +152,11 @@ const Navbar = () => {
               <Link href="/cart" className={getUtilityLinkClass(pathname.startsWith("/cart"))}>
                 <ShoppingCart size={18} />
                 Giỏ hàng
-                <span className="absolute left-5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-600 px-1 text-[8px] text-white">
-                  {cartCount}
-                </span>
+                {mounted && (
+                  <span className="absolute left-5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-600 px-1 text-[8px] text-white">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
 
               <Link href="/wishlist" className={getUtilityLinkClass(pathname.startsWith("/wishlist"))}>
@@ -156,14 +165,16 @@ const Navbar = () => {
                   className={pathname.startsWith("/wishlist") ? "fill-green-100 text-green-700" : ""}
                 />
                 Wishlist
-                {wishlistCount > 0 && (
+                {mounted && wishlistCount > 0 && (
                   <span className="absolute left-5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-green-600 px-1 text-[8px] text-white">
                     {wishlistCount}
                   </span>
                 )}
               </Link>
 
-              {!user ? (
+              {!mounted ? (
+                <div className="h-10 w-28 shrink-0 rounded-full bg-slate-100" />
+              ) : !user ? (
                 <button
                   onClick={() =>
                     openSignIn({
@@ -196,7 +207,9 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:hidden">
-            {user ? (
+            {!mounted ? (
+              <div className="h-10 w-24 rounded-full bg-slate-100" />
+            ) : user ? (
               <UserButton>
                 <UserButton.MenuItems>
                   <UserButton.Action
@@ -292,7 +305,7 @@ const Navbar = () => {
                   <p className="text-sm font-semibold text-slate-800">Menu</p>
                 </div>
                 <div className="rounded-full bg-green-50 px-3 py-1 text-[11px] font-medium text-green-700">
-                  {wishlistCount} yêu thích
+                  {mounted ? `${wishlistCount} yêu thích` : "..."}
                 </div>
               </div>
 
@@ -320,9 +333,11 @@ const Navbar = () => {
                 >
                   <ShoppingCart size={18} />
                   Giỏ hàng
-                  <span className="ml-auto rounded-full bg-slate-600 px-2 py-0.5 text-[10px] text-white">
-                    {cartCount}
-                  </span>
+                  {mounted && (
+                    <span className="ml-auto rounded-full bg-slate-600 px-2 py-0.5 text-[10px] text-white">
+                      {cartCount}
+                    </span>
+                  )}
                 </Link>
 
                 <Link
@@ -336,12 +351,16 @@ const Navbar = () => {
                 >
                   <HeartIcon size={18} className={pathname.startsWith("/wishlist") ? "fill-green-100 text-green-700" : ""} />
                   Wishlist
-                  <span className="ml-auto rounded-full bg-green-600 px-2 py-0.5 text-[10px] text-white">
-                    {wishlistCount}
-                  </span>
+                  {mounted && (
+                    <span className="ml-auto rounded-full bg-green-600 px-2 py-0.5 text-[10px] text-white">
+                      {wishlistCount}
+                    </span>
+                  )}
                 </Link>
 
-                {user ? (
+                {!mounted ? (
+                  <div className="h-12 rounded-2xl bg-slate-100" />
+                ) : user ? (
                   <Link
                     href="/orders"
                     className={`mobile-menu-item inline-flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-green-50 hover:text-green-700 ${

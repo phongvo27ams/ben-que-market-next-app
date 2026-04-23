@@ -17,7 +17,7 @@ const stripHtml = (html = "") => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, "
 export default function StoreManageProducts() {
   const { getToken } = useAuth()
   const { user } = useUser()
-  const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
+  const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'đ'
 
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState([])
@@ -30,8 +30,12 @@ export default function StoreManageProducts() {
     inStock: 0,
     category: "",
     origin: "",
+    productionFacilityId: "",
+    certification: "",
+    ocopStars: 0,
   })
   const [editImages, setEditImages] = useState([null, null, null, null])
+  const [productionFacilities, setProductionFacilities] = useState([])
 
   const fetchProducts = async () => {
     try {
@@ -45,6 +49,19 @@ export default function StoreManageProducts() {
       toast.error(error?.response?.data?.error || error.message)
     }
     setLoading(false)
+  }
+
+  const fetchProductionFacilities = async () => {
+    try {
+      const token = await getToken()
+      const { data } = await axios.get('/api/store/production-facility', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setProductionFacilities(data.productionFacilities || [])
+    } catch (error) {
+      console.error("Error fetching production facilities:", error)
+      toast.error(error?.response?.data?.error || error.message)
+    }
   }
 
   const updateStock = async (productId, nextStock) => {
@@ -76,6 +93,9 @@ export default function StoreManageProducts() {
       inStock: product.inStock,
       category: product.category,
       origin: product.origin || "",
+      productionFacilityId: product.productionFacilityId || "",
+      certification: product.certification || "",
+      ocopStars: product.ocopStars || 0,
     })
     setEditImages([
       product.images[0] || null,
@@ -95,6 +115,9 @@ export default function StoreManageProducts() {
       inStock: 0,
       category: "",
       origin: "",
+      productionFacilityId: "",
+      certification: "",
+      ocopStars: 0,
     })
     setEditImages([null, null, null, null])
   }
@@ -114,7 +137,7 @@ export default function StoreManageProducts() {
       const newImages = editImages.filter((image) => image instanceof File)
 
       if (retainedImages.length + newImages.length === 0) {
-        toast.error("Please keep at least one product image")
+        toast.error("Vui lòng giữ lại ít nhất một ảnh sản phẩm.")
         return
       }
 
@@ -127,6 +150,9 @@ export default function StoreManageProducts() {
       formData.append("inStock", Number(editForm.inStock))
       formData.append("category", editForm.category)
       formData.append("origin", editForm.origin)
+      formData.append("productionFacilityId", editForm.productionFacilityId)
+      formData.append("certification", editForm.certification)
+      formData.append("ocopStars", Number(editForm.ocopStars))
       formData.append("retainedImages", JSON.stringify(retainedImages))
       newImages.forEach((image) => formData.append("newImages", image))
 
@@ -143,7 +169,11 @@ export default function StoreManageProducts() {
                 mrp: Number(editForm.mrp),
                 price: Number(editForm.price),
                 inStock: Number(editForm.inStock),
+                ocopStars: Number(editForm.ocopStars),
                 origin: editForm.origin,
+                productionFacilityId: editForm.productionFacilityId,
+                productionFacility: productionFacilities.find((facility) => facility.id === editForm.productionFacilityId) || product.productionFacility,
+                certification: editForm.certification,
                 images: data.images,
               }
             : product
@@ -176,7 +206,7 @@ export default function StoreManageProducts() {
 
   const deleteProduct = async (productId) => {
     try {
-      const confirmed = window.confirm("Delete this product?")
+      const confirmed = window.confirm("Bạn có chắc muốn xóa sản phẩm này không?")
       if (!confirmed) return
 
       const token = await getToken()
@@ -197,6 +227,7 @@ export default function StoreManageProducts() {
   useEffect(() => {
     if (user) {
       fetchProducts()
+      fetchProductionFacilities()
     }
   }, [user])
 
@@ -204,7 +235,7 @@ export default function StoreManageProducts() {
 
   return (
     <>
-      <h1 className="mb-5 text-2xl text-slate-500">Manage <span className="font-medium text-slate-800">Products</span></h1>
+      <h1 className="mb-5 text-2xl text-slate-500">Quản lý <span className="font-medium text-slate-800">Sản phẩm</span></h1>
       <div className="w-full overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 lg:overflow-visible">
         <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <colgroup>
@@ -218,13 +249,13 @@ export default function StoreManageProducts() {
           </colgroup>
           <thead className="bg-slate-50 uppercase tracking-wider text-gray-700">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Origin</th>
-              <th className="px-4 py-3">MRP</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3 text-center">Stock</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3">Tên sản phẩm</th>
+              <th className="px-4 py-3">Mô tả</th>
+              <th className="px-4 py-3">Xuất xứ</th>
+              <th className="px-4 py-3">Giá gốc</th>
+              <th className="px-4 py-3">Giá bán</th>
+              <th className="px-4 py-3 text-center">Tồn kho</th>
+              <th className="px-4 py-3">Thao tác</th>
             </tr>
           </thead>
           <tbody className="text-slate-700">
@@ -250,7 +281,7 @@ export default function StoreManageProducts() {
                       type="number"
                       min="0"
                       value={product.inStock}
-                      onChange={(e) => toast.promise(updateStock(product.id, e.target.value), { loading: "Updating data..." })}
+                      onChange={(e) => toast.promise(updateStock(product.id, e.target.value), { loading: "Đang cập nhật tồn kho..." })}
                       className="w-20 rounded border border-slate-200 px-2 py-1 text-center outline-none"
                     />
                   </td>
@@ -262,15 +293,15 @@ export default function StoreManageProducts() {
                         className="inline-flex items-center gap-1 text-blue-600 transition hover:text-blue-800"
                       >
                         <Pencil size={16} />
-                        Edit
+                        Sửa
                       </button>
                       <button
                         type="button"
-                        onClick={() => toast.promise(deleteProduct(product.id), { loading: "Deleting product..." })}
+                        onClick={() => toast.promise(deleteProduct(product.id), { loading: "Đang xóa sản phẩm..." })}
                         className="inline-flex items-center gap-1 text-red-500 transition hover:text-red-700"
                       >
                         <Trash2 size={16} />
-                        Delete
+                        Xóa
                       </button>
                     </div>
                   </td>
@@ -281,7 +312,7 @@ export default function StoreManageProducts() {
                     <td colSpan={7} className="overflow-visible p-4">
                       <div className="overflow-visible rounded-xl border border-slate-200 bg-white p-4">
                         <div className="mb-4 flex items-center justify-between">
-                          <h2 className="text-base font-medium text-slate-800">Edit Product</h2>
+                          <h2 className="text-base font-medium text-slate-800">Chỉnh sửa sản phẩm</h2>
                           <button type="button" onClick={cancelEdit} className="text-slate-500 hover:text-slate-700">
                             <X size={18} />
                           </button>
@@ -289,7 +320,7 @@ export default function StoreManageProducts() {
 
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="md:col-span-2">
-                            <p className="mb-2 text-sm font-medium text-slate-700">Product Images</p>
+                            <p className="mb-2 text-sm font-medium text-slate-700">Hình ảnh sản phẩm</p>
                             <div className="flex flex-wrap gap-3">
                               {editImages.map((image, index) => (
                                 <div key={index} className="relative">
@@ -321,18 +352,18 @@ export default function StoreManageProducts() {
                                 </div>
                               ))}
                             </div>
-                            <p className="mt-2 text-xs text-slate-500">Click an image slot to replace it, or press X to remove it.</p>
+                            <p className="mt-2 text-xs text-slate-500">Bấm vào ô ảnh để thay ảnh, hoặc bấm X để xóa ảnh.</p>
                           </div>
 
                           <label className="flex flex-col gap-2">
-                            Name
+                            Tên sản phẩm
                             <input type="text" name="name" value={editForm.name} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
 
                           <label className="flex flex-col gap-2">
-                            Category
+                            Danh mục
                             <select name="category" value={editForm.category} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required>
-                              <option value="">Select a category</option>
+                              <option value="">Chọn danh mục</option>
                               {categories.map((category) => (
                                 <option key={category} value={category}>{category}</option>
                               ))}
@@ -340,32 +371,84 @@ export default function StoreManageProducts() {
                           </label>
 
                           <label className="flex flex-col gap-2">
-                            Origin
-                            <input type="text" name="origin" value={editForm.origin} onChange={handleEditChange} placeholder="Vd: Bến Tre, Đồng Tháp, An Giang..." className="rounded border border-slate-200 p-2 px-3 outline-none" required />
+                            Xuất xứ
+                            <input type="text" name="origin" value={editForm.origin} onChange={handleEditChange} placeholder="Ví dụ: Bến Tre, Đồng Tháp, An Giang..." className="rounded border border-slate-200 p-2 px-3 outline-none" required />
+                          </label>
+
+                          <label className="flex flex-col gap-2 md:col-span-2">
+                            Cơ sở sản xuất
+                            <select
+                              name="productionFacilityId"
+                              value={editForm.productionFacilityId}
+                              onChange={handleEditChange}
+                              className="rounded border border-slate-200 p-2 px-3 outline-none"
+                              required
+                            >
+                              <option value="">Chọn cơ sở sản xuất</option>
+                              {productionFacilities.map((facility) => (
+                                <option key={facility.id} value={facility.id}>
+                                  {facility.name}
+                                </option>
+                              ))}
+                            </select>
+                            {productionFacilities.length === 0 && (
+                              <p className="text-sm text-amber-600">Chưa có cơ sở sản xuất nào trong hệ thống để chọn.</p>
+                            )}
+                          </label>
+
+                          <label className="flex flex-col gap-2 md:col-span-2">
+                            Số sao OCOP: <span className="font-medium text-slate-800">{editForm.ocopStars}</span>
+                            <input
+                              type="range"
+                              name="ocopStars"
+                              min="0"
+                              max="5"
+                              step="1"
+                              value={editForm.ocopStars}
+                              onChange={handleEditChange}
+                              className="accent-emerald-600"
+                            />
+                            <div className="flex justify-between text-xs text-slate-400">
+                              <span>0 sao</span>
+                              <span>5 sao</span>
+                            </div>
+                          </label>
+
+                          <label className="flex flex-col gap-2 md:col-span-2">
+                            Giấy chứng nhận
+                            <textarea
+                              name="certification"
+                              value={editForm.certification}
+                              onChange={handleEditChange}
+                              rows={3}
+                              placeholder="Nhập thông tin giấy chứng nhận, tiêu chuẩn, kiểm định..."
+                              className="rounded border border-slate-200 p-2 px-3 outline-none resize-none"
+                              required
+                            />
                           </label>
 
                           <div className="flex flex-col gap-2 md:col-span-2">
-                            <p>Description</p>
+                            <p>Mô tả sản phẩm</p>
                             <RichTextEditor
                               value={editForm.description}
                               onChange={(value) => setEditForm((prev) => ({ ...prev, description: value }))}
-                              placeholder="Write a blog-style product story with headings, highlights, ingredients, usage, benefits, and a call to action."
+                              placeholder="Viết bài giới thiệu sản phẩm với tiêu đề, điểm nhấn, thành phần, cách dùng, lợi ích và lời kêu gọi mua hàng."
                               minHeight={340}
                             />
                           </div>
 
                           <label className="flex flex-col gap-2">
-                            Actual Price ({currency})
+                            Giá gốc ({currency})
                             <input type="number" min="0" name="mrp" value={editForm.mrp} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
 
                           <label className="flex flex-col gap-2">
-                            Offer Price ({currency})
+                            Giá bán ({currency})
                             <input type="number" min="0" name="price" value={editForm.price} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
 
                           <label className="flex flex-col gap-2">
-                            Stock Quantity
+                            Số lượng tồn kho
                             <input type="number" min="0" name="inStock" value={editForm.inStock} onChange={handleEditChange} className="rounded border border-slate-200 p-2 px-3 outline-none" required />
                           </label>
                         </div>
@@ -373,17 +456,17 @@ export default function StoreManageProducts() {
                         <div className="mt-4 flex gap-3">
                           <button
                             type="button"
-                            onClick={() => toast.promise(updateProduct(product.id), { loading: "Updating product..." })}
+                            onClick={() => toast.promise(updateProduct(product.id), { loading: "Đang cập nhật sản phẩm..." })}
                             className="rounded bg-slate-800 px-5 py-2 text-white transition hover:bg-slate-900"
                           >
-                            Save Changes
+                            Lưu thay đổi
                           </button>
                           <button
                             type="button"
                             onClick={cancelEdit}
                             className="rounded border border-slate-200 px-5 py-2 text-slate-700 transition hover:bg-slate-50"
                           >
-                            Cancel
+                            Hủy
                           </button>
                         </div>
                       </div>

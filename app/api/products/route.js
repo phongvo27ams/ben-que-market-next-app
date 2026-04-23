@@ -21,6 +21,7 @@ export async function GET(request) {
           }
         },
         store: true,
+        productionFacility: true,
       },
       orderBy: { createdAt: "desc" },
     });

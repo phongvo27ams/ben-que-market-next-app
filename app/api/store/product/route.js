@@ -103,16 +103,31 @@ export async function POST(request) {
     const price = Number(formData.get("price"));
     const category = formData.get("category");
     const origin = formData.get("origin");
+    const productionFacilityId = formData.get("productionFacilityId");
+    const certification = formData.get("certification");
+    const ocopStars = Number(formData.get("ocopStars") || 0);
     const images = formData.getAll("images");
 
     const inStock = Number(formData.get("inStock") || 0);
 
-    if (!name || !description || !mrp || !price || !category || !origin || images.length === 0) {
+    if (!name || !description || !mrp || !price || !category || !origin || !productionFacilityId || !certification || images.length === 0) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
     if (Number.isNaN(inStock) || inStock < 0) {
       return NextResponse.json({ error: "Stock quantity must be 0 or greater" }, { status: 400 });
+    }
+
+    if (Number.isNaN(ocopStars) || ocopStars < 0 || ocopStars > 5) {
+      return NextResponse.json({ error: "OCOP stars must be between 0 and 5" }, { status: 400 });
+    }
+
+    const productionFacility = await prisma.productionFacility.findFirst({
+      where: { id: productionFacilityId, storeId },
+    });
+
+    if (!productionFacility) {
+      return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
     }
 
     // Upload images to ImageKit
@@ -127,6 +142,9 @@ export async function POST(request) {
         price,
         category,
         origin,
+        productionFacilityId,
+        certification,
+        ocopStars,
         inStock,
         images: imageUrl,
       }
@@ -151,6 +169,7 @@ export async function GET(request) {
 
     const products = await prisma.product.findMany({
       where: { storeId },
+      include: { productionFacility: true },
     });
 
     return NextResponse.json({ products }, { status: 200 });
@@ -178,6 +197,9 @@ export async function PUT(request) {
     const price = formData.get("price");
     const category = formData.get("category");
     const origin = formData.get("origin");
+    const productionFacilityId = formData.get("productionFacilityId");
+    const certification = formData.get("certification");
+    const ocopStars = Number(formData.get("ocopStars") || 0);
     const inStock = Number(formData.get("inStock"));
     const retainedImages = JSON.parse(formData.get("retainedImages") || "[]");
     const newImages = formData.getAll("newImages").filter((image) => image?.size > 0);
@@ -189,9 +211,14 @@ export async function PUT(request) {
       Number.isNaN(Number(mrp)) ||
       Number.isNaN(Number(price)) ||
       Number.isNaN(inStock) ||
+      Number.isNaN(ocopStars) ||
       inStock < 0 ||
+      ocopStars < 0 ||
+      ocopStars > 5 ||
       !category ||
-      !origin
+      !origin ||
+      !productionFacilityId ||
+      !certification
     ) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
@@ -202,6 +229,14 @@ export async function PUT(request) {
 
     if (!product) {
       return NextResponse.json({ error: "Product not found or does not belong to your store" }, { status: 404 });
+    }
+
+    const productionFacility = await prisma.productionFacility.findFirst({
+      where: { id: productionFacilityId, storeId },
+    });
+
+    if (!productionFacility) {
+      return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
     }
 
     const uploadedImageUrls = await uploadImages(newImages);
@@ -226,6 +261,9 @@ export async function PUT(request) {
         price: Number(price),
         category,
         origin,
+        productionFacilityId,
+        certification,
+        ocopStars,
         inStock,
         images: nextImages,
       },

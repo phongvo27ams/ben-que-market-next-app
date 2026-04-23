@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { StarIcon, TagIcon, EarthIcon, CreditCardIcon, UserIcon } from "lucide-react";
+import { StarIcon, TagIcon, FactoryIcon, MapPinIcon, BadgeCheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
@@ -48,6 +48,7 @@ const ProductDetails = ({ product }) => {
   const averageRating = product.rating.length
     ? product.rating.reduce((acc, item) => acc + item.rating, 0) / product.rating.length
     : 0;
+  const ocopStars = Number(product.ocopStars || 0);
 
   return (
     <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
@@ -65,7 +66,28 @@ const ProductDetails = ({ product }) => {
           ))}
         </div>
 
-        <div className="flex h-[20rem] w-full items-center justify-center rounded-2xl bg-slate-100 p-6 sm:h-[24rem] lg:w-[30rem] lg:max-w-[30rem]">
+        <div className="relative flex h-[20rem] w-full items-center justify-center rounded-2xl bg-slate-100 p-6 sm:h-[26.25rem] lg:w-[30rem] lg:max-w-[30rem]">
+          {ocopStars > 0 && (
+            <div className="absolute right-4 top-4 flex flex-col items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm">
+              <p className="font-black uppercase leading-none tracking-[0.1em] text-xl sm:text-2xl">
+                <span style={{ color: '#9F5237' }}>O</span>
+                <span style={{ color: '#087943' }}>C</span>
+                <span style={{ color: '#195CAA' }}>O</span>
+                <span style={{ color: '#F8A41D' }}>P</span>
+              </p>
+
+              <div className="flex items-center justify-center gap-1">
+                {Array.from({ length: ocopStars }).map((_, index) => (
+                  <StarIcon
+                    key={index}
+                    size={17}
+                    className="text-[#FED545]"
+                    fill="#FED545"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <Image src={mainImage} alt={product.name} width={320} height={320} className="h-auto max-h-full w-auto max-w-full object-contain" />
         </div>
       </div>
@@ -120,9 +142,18 @@ const ProductDetails = ({ product }) => {
         <hr className="my-6 border-gray-300" />
 
         <div className="flex flex-col gap-4 text-sm text-slate-500 sm:text-base">
-          <p className="flex gap-3"><EarthIcon className="shrink-0 text-slate-400" />Miễn phí vận chuyển cho thành viên</p>
-          <p className="flex gap-3"><CreditCardIcon className="shrink-0 text-slate-400" />Thanh toán trực tuyến an toàn</p>
-          <p className="flex gap-3"><UserIcon className="shrink-0 text-slate-400" />Được khách hàng tin tưởng lựa chọn</p>
+          <p className="flex gap-3">
+            <FactoryIcon className="shrink-0 text-slate-400" />
+            {product.productionFacility?.name || "Chưa cập nhật cơ sở sản xuất"}
+          </p>
+          <p className="flex gap-3">
+            <MapPinIcon className="shrink-0 text-slate-400" />
+            {product.productionFacility?.address || "Chưa cập nhật địa chỉ cơ sở sản xuất"}
+          </p>
+          <p className="flex gap-3">
+            <BadgeCheckIcon className="shrink-0 text-slate-400" />
+            {product.certification || "Chưa cập nhật giấy chứng nhận"}
+          </p>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CopyIcon, HeartIcon, LoaderCircleIcon, StarIcon } from 'lucide-react'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import Image from 'next/image'
@@ -14,6 +14,8 @@ import { formatMoney } from "../lib/format"
 
 const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
   const [imageLoading, setImageLoading] = useState(true)
+  const [isHovering, setIsHovering] = useState(false)
+  const [showNativeTooltip, setShowNativeTooltip] = useState(false)
   const dispatch = useDispatch()
   const cartItems = useSelector((state) => state.cart.cartItems)
   const wishlistItems = useSelector((state) => state.wishlist.items)
@@ -25,6 +27,7 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
   const discountPercent = isDiscounted
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0
+  const ocopStars = Number(product.ocopStars || 0)
   const currentCartQuantity = cartItems[product.id] || 0
   const isWishlisted = wishlistItems.includes(product.id)
 
@@ -77,8 +80,36 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
     }
   }
 
+  useEffect(() => {
+    let timeoutId
+
+    if (isHovering && !showNativeTooltip) {
+      timeoutId = setTimeout(() => {
+        setShowNativeTooltip(true)
+      }, 2000)
+    }
+
+    return () => clearTimeout(timeoutId)
+  }, [isHovering, showNativeTooltip])
+
   return (
-    <div className={`group relative ${compact ? 'block w-full' : 'max-xl:mx-auto'}`}>
+    <div
+      className={`group relative ${compact ? 'block w-full' : 'max-xl:mx-auto'}`}
+      onMouseEnter={() => {
+        setIsHovering(true)
+        setShowNativeTooltip(false)
+      }}
+      onMouseLeave={() => {
+        setIsHovering(false)
+        setShowNativeTooltip(false)
+      }}
+    >
+      {showNativeTooltip && (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-[80] -translate-x-1/2 rounded bg-white px-2 py-1 text-xs text-slate-800 shadow">
+          {product.name}
+        </div>
+      )}
+
       <Link href={`/product/${product.id}`} className="block">
         <div className={`relative flex items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F5] ${compact ? 'h-36 w-full px-3 sm:h-56' : 'h-40 sm:h-68 sm:w-60'}`}>
           {isDiscounted && (
@@ -133,13 +164,29 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
             onError={() => setImageLoading(false)}
           />
 
-          <div className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16">
-            <div className="rounded-2xl bg-white/82 px-3 py-2 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.14)] ring-1 ring-white/60">
-              <p className={`text-slate-900 font-semibold leading-snug ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
-                {product.name}
-              </p>
+          {ocopStars > 0 && (
+            <div className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16">
+              <div className="rounded-2xl bg-white/82 px-3 py-2 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.14)] ring-1 ring-white/60">
+                <p className={`text-center font-black uppercase mb-1 leading-none tracking-[0.1em] ${compact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'}`}>
+                  <span style={{ color: '#9F5237' }}>O</span>
+                  <span style={{ color: '#087943' }}>C</span>
+                  <span style={{ color: '#195CAA' }}>O</span>
+                  <span style={{ color: '#F8A41D' }}>P</span>
+                </p>
+
+                <div className="flex items-center justify-center gap-1">
+                  {Array.from({ length: ocopStars }).map((_, index) => (
+                    <StarIcon
+                      key={index}
+                      size={compact ? 14 : 16}
+                      className="text-[#FED545]"
+                      fill="#FED545"
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {showQuickBuy && <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full px-0 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
             <button
