@@ -152,8 +152,8 @@ const Navbar = () => {
               <Link href="/cart" className={getUtilityLinkClass(pathname.startsWith("/cart"))}>
                 <ShoppingCart size={18} />
                 Giỏ hàng
-                {mounted && (
-                  <span className="absolute left-5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-600 px-1 text-[8px] text-white">
+                {mounted && cartCount > 0 && (
+                  <span className="absolute left-5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-green-600 px-1 text-[8px] text-white">
                     {cartCount}
                   </span>
                 )}
@@ -333,8 +333,8 @@ const Navbar = () => {
                 >
                   <ShoppingCart size={18} />
                   Giỏ hàng
-                  {mounted && (
-                    <span className="ml-auto rounded-full bg-slate-600 px-2 py-0.5 text-[10px] text-white">
+                  {mounted && cartCount > 0 && (
+                    <span className="ml-auto rounded-full bg-green-600 px-2 py-0.5 text-[10px] text-white">
                       {cartCount}
                     </span>
                   )}
@@ -351,7 +351,7 @@ const Navbar = () => {
                 >
                   <HeartIcon size={18} className={pathname.startsWith("/wishlist") ? "fill-green-100 text-green-700" : ""} />
                   Wishlist
-                  {mounted && (
+                  {mounted && wishlistCount > 0 && (
                     <span className="ml-auto rounded-full bg-green-600 px-2 py-0.5 text-[10px] text-white">
                       {wishlistCount}
                     </span>

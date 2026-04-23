@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useSelector } from "react-redux"
 
 import ProductCard from "../../../components/ProductCard"
+import OcopBadge from "../../../components/OcopBadge"
 import { categories } from "../../../assets/assets"
 import { formatMoney } from "../../../lib/format"
 
@@ -15,6 +16,7 @@ function ShopContent() {
   const initialSort = searchParams.get('sort') || 'latest'
   const initialCategory = searchParams.get('category') || ''
   const initialOrigin = searchParams.get('origin') || ''
+  const initialProductionFacility = searchParams.get('facility') || ''
   const router = useRouter()
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
   const products = useSelector((state) => state.product.list)
@@ -32,8 +34,23 @@ function ShopContent() {
     return [...new Set(products.map((product) => product.origin).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   }, [products])
 
+  const productionFacilities = useMemo(() => {
+    const facilityMap = new Map()
+
+    products.forEach((product) => {
+      const facility = product.productionFacility
+      if (facility?.id && facility?.name) {
+        facilityMap.set(facility.id, facility)
+      }
+    })
+
+    return [...facilityMap.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }, [products])
+
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [selectedOrigin, setSelectedOrigin] = useState(initialOrigin)
+  const [selectedProductionFacility, setSelectedProductionFacility] = useState(initialProductionFacility)
+  const [selectedOcopStars, setSelectedOcopStars] = useState([])
   const [minPrice, setMinPrice] = useState(priceBounds.min)
   const [maxPrice, setMaxPrice] = useState(priceBounds.max)
   const [sortBy, setSortBy] = useState(initialSort)
@@ -57,6 +74,18 @@ function ShopContent() {
     setSelectedOrigin(initialOrigin)
   }, [initialOrigin])
 
+  useEffect(() => {
+    setSelectedProductionFacility(initialProductionFacility)
+  }, [initialProductionFacility])
+
+  const toggleOcopStar = (star) => {
+    setSelectedOcopStars((current) =>
+      current.includes(star)
+        ? current.filter((item) => item !== star)
+        : [...current, star]
+    )
+  }
+
   const filteredProducts = useMemo(() => {
     let nextProducts = [...products]
 
@@ -72,6 +101,14 @@ function ShopContent() {
 
     if (selectedOrigin) {
       nextProducts = nextProducts.filter((product) => product.origin === selectedOrigin)
+    }
+
+    if (selectedProductionFacility) {
+      nextProducts = nextProducts.filter((product) => product.productionFacility?.id === selectedProductionFacility)
+    }
+
+    if (selectedOcopStars.length > 0) {
+      nextProducts = nextProducts.filter((product) => selectedOcopStars.includes(Number(product.ocopStars || 0)))
     }
 
     nextProducts = nextProducts.filter((product) => product.price >= minPrice && product.price <= maxPrice)
@@ -115,11 +152,13 @@ function ShopContent() {
     }
 
     return nextProducts
-  }, [products, search, selectedCategory, selectedOrigin, minPrice, maxPrice, inStockOnly, minRating, sortBy])
+  }, [products, search, selectedCategory, selectedOrigin, selectedProductionFacility, selectedOcopStars, minPrice, maxPrice, inStockOnly, minRating, sortBy])
 
   const resetFilters = () => {
     setSelectedCategory('')
     setSelectedOrigin('')
+    setSelectedProductionFacility('')
+    setSelectedOcopStars([])
     setMinPrice(priceBounds.min)
     setMaxPrice(priceBounds.max)
     setSortBy('latest')
@@ -151,6 +190,16 @@ function ShopContent() {
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               {selectedCategory && <span className="rounded-full bg-slate-100 px-3 py-1">Danh mục: {selectedCategory}</span>}
               {selectedOrigin && <span className="rounded-full bg-slate-100 px-3 py-1">Xuất xứ: {selectedOrigin}</span>}
+              {selectedProductionFacility && (
+                <span className="rounded-full bg-slate-100 px-3 py-1">
+                  Cơ sở sản xuất: {productionFacilities.find((facility) => facility.id === selectedProductionFacility)?.name}
+                </span>
+              )}
+              {selectedOcopStars.length > 0 && (
+                <span className="rounded-full bg-slate-100 px-3 py-1">
+                  OCOP: {[...selectedOcopStars].sort((a, b) => a - b).join(', ')} sao
+                </span>
+              )}
               {inStockOnly && <span className="rounded-full bg-slate-100 px-3 py-1">Còn hàng</span>}
               {minRating > 0 && <span className="rounded-full bg-slate-100 px-3 py-1">Đánh giá: {minRating}+</span>}
             </div>
@@ -216,6 +265,53 @@ function ShopContent() {
                       <option key={origin} value={origin}>{origin}</option>
                     ))}
                   </select>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Cơ sở sản xuất</h3>
+                  <select
+                    value={selectedProductionFacility}
+                    onChange={(e) => setSelectedProductionFacility(e.target.value)}
+                    className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none"
+                  >
+                    <option value="">Tất cả cơ sở sản xuất</option>
+                    {productionFacilities.map((facility) => (
+                      <option key={facility.id} value={facility.id}>{facility.name}</option>
+                    ))}
+                  </select>
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-medium text-slate-800">Số sao OCOP</h3>
+                  <div className="mt-3 space-y-2">
+                    {[3, 4, 5].map((star) => (
+                      <label
+                        key={star}
+                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2 transition ${selectedOcopStars.includes(star)
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedOcopStars.includes(star)}
+                            onChange={() => toggleOcopStar(star)}
+                            className="accent-green-600"
+                          />
+                          <OcopBadge
+                            stars={star}
+                            className="flex items-center gap-2"
+                            letterClassName="text-sm"
+                            starSize={13}
+                          />
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {star === 3 ? 'Đồng' : star === 4 ? 'Bạc' : 'Vàng'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </section>
 
                 <section>

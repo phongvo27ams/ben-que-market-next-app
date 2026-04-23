@@ -11,6 +11,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { addToCart } from "../lib/features/cart/cartSlice";
 import Counter from "./Counter";
 import { formatMoney } from "../lib/format";
+import OcopBadge from "./OcopBadge";
 
 const ProductDetails = ({ product }) => {
   const productId = product.id;
@@ -48,7 +49,6 @@ const ProductDetails = ({ product }) => {
   const averageRating = product.rating.length
     ? product.rating.reduce((acc, item) => acc + item.rating, 0) / product.rating.length
     : 0;
-  const ocopStars = Number(product.ocopStars || 0);
 
   return (
     <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
@@ -67,27 +67,12 @@ const ProductDetails = ({ product }) => {
         </div>
 
         <div className="relative flex h-[20rem] w-full items-center justify-center rounded-2xl bg-slate-100 p-6 sm:h-[26.25rem] lg:w-[30rem] lg:max-w-[30rem]">
-          {ocopStars > 0 && (
-            <div className="absolute right-4 top-4 flex flex-col items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm">
-              <p className="font-black uppercase leading-none tracking-[0.1em] text-xl sm:text-2xl">
-                <span style={{ color: '#9F5237' }}>O</span>
-                <span style={{ color: '#087943' }}>C</span>
-                <span style={{ color: '#195CAA' }}>O</span>
-                <span style={{ color: '#F8A41D' }}>P</span>
-              </p>
-
-              <div className="flex items-center justify-center gap-1">
-                {Array.from({ length: ocopStars }).map((_, index) => (
-                  <StarIcon
-                    key={index}
-                    size={17}
-                    className="text-[#FED545]"
-                    fill="#FED545"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          <OcopBadge
+            stars={product.ocopStars}
+            className="absolute right-4 top-4 rounded-2xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm"
+            letterClassName="text-xl sm:text-2xl"
+            starSize={17}
+          />
           <Image src={mainImage} alt={product.name} width={320} height={320} className="h-auto max-h-full w-auto max-w-full object-contain" />
         </div>
       </div>

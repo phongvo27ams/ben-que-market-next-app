@@ -1,6 +1,5 @@
 import prisma from "../../../lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
-import { PaymentMethod } from "@prisma/client";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
@@ -183,13 +182,13 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
+
+    if (!userId) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const orders = await prisma.order.findMany({
-      where: {
-        userId, OR: [
-          { paymentMethod: PaymentMethod.COD },
-          { AND: [{ paymentMethod: PaymentMethod.STRIPE }, { isPaid: true }] }
-        ]
-      },
+      where: { userId },
       include: {
         orderItems: {
           include: { product: true }

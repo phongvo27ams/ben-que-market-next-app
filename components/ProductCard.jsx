@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { addToCart } from '../lib/features/cart/cartSlice'
 import { toggleWishlistItem } from '../lib/features/wishlist/wishlistSlice'
 import { formatMoney } from "../lib/format"
+import OcopBadge from './OcopBadge'
 
 const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
   const [imageLoading, setImageLoading] = useState(true)
@@ -27,7 +28,6 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
   const discountPercent = isDiscounted
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0
-  const ocopStars = Number(product.ocopStars || 0)
   const currentCartQuantity = cartItems[product.id] || 0
   const isWishlisted = wishlistItems.includes(product.id)
 
@@ -164,29 +164,12 @@ const ProductCard = ({ product, compact = false, showQuickBuy = true }) => {
             onError={() => setImageLoading(false)}
           />
 
-          {ocopStars > 0 && (
-            <div className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16">
-              <div className="rounded-2xl bg-white/82 px-3 py-2 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.14)] ring-1 ring-white/60">
-                <p className={`text-center font-black uppercase mb-1 leading-none tracking-[0.1em] ${compact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'}`}>
-                  <span style={{ color: '#9F5237' }}>O</span>
-                  <span style={{ color: '#087943' }}>C</span>
-                  <span style={{ color: '#195CAA' }}>O</span>
-                  <span style={{ color: '#F8A41D' }}>P</span>
-                </p>
-
-                <div className="flex items-center justify-center gap-1">
-                  {Array.from({ length: ocopStars }).map((_, index) => (
-                    <StarIcon
-                      key={index}
-                      size={compact ? 14 : 16}
-                      className="text-[#FED545]"
-                      fill="#FED545"
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          <OcopBadge
+            stars={product.ocopStars}
+            className="pointer-events-none absolute inset-x-3 bottom-14 z-[1] translate-y-4 rounded-2xl bg-white/82 px-3 py-2 opacity-0 shadow-[0_10px_30px_rgba(15,23,42,0.14)] ring-1 ring-white/60 backdrop-blur-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-16"
+            letterClassName={compact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'}
+            starSize={compact ? 14 : 16}
+          />
 
           {showQuickBuy && <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full px-0 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
             <button
