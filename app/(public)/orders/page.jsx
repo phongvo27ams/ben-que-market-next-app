@@ -50,7 +50,7 @@ export default function Orders() {
       {orders.length > 0 ? (
         <div className="my-20 w-full">
           <PageTitle
-            heading="Giỏ hàng của tôi"
+            heading="Đơn hàng của tôi"
             text={`Hiển thị ${orders.length} đơn hàng`}
             linkText={'Về trang chủ'}
           />

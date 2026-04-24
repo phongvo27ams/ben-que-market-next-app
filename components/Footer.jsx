@@ -117,9 +117,9 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="min-w-0 text-sm leading-6">
+          <div className="min-w-0 w-full text-sm leading-6">
             <h3 className="mb-3 font-medium text-slate-700 md:mb-5">VỀ CHÚNG TÔI</h3>
-            <p className="max-w-[320px] text-justify text-sm leading-6">
+            <p className="w-full max-w-none text-left text-sm leading-6 md:max-w-[320px] md:text-justify">
               Chào mừng bạn đến với Bến Quê Market. Chúng tôi là nền tảng thương mại điện tử chuyên cung cấp các đặc sản trứ danh của miền Tây Việt Nam, nơi hội tụ tinh hoa ẩm thực và giá trị văn hóa vùng sông nước.
             </p>
           </div>

@@ -80,10 +80,10 @@ const OrderItem = ({ order }) => {
               const existingRating = ratings.find(rating => order.id === rating.orderId && item.product.id === rating.productId);
 
               return (
-                <div key={index} className="flex items-center gap-4">
-                  <div className="flex aspect-square w-20 items-center justify-center rounded-xl bg-slate-100">
+                <div key={index} className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 sm:gap-4 sm:bg-transparent sm:p-0">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-slate-100">
                     <Image
-                      className="h-14 w-auto"
+                      className="h-14 w-auto object-contain"
                       src={item.product.images[0]}
                       alt={item.product.name}
                       width={50}
@@ -91,8 +91,8 @@ const OrderItem = ({ order }) => {
                     />
                   </div>
 
-                  <div className="flex flex-col justify-center text-sm">
-                    <p className="text-base font-medium text-slate-700">{item.product.name}</p>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="min-h-12 line-clamp-2 text-base font-medium leading-6 text-slate-700">{item.product.name}</p>
                     <p className="text-slate-500">{formatMoney(item.price, currency)} | Số lượng: {item.quantity}</p>
                     <p className="mb-1 text-xs text-slate-400">Ngày đặt: {orderDate}</p>
                     <div>
