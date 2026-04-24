@@ -132,7 +132,7 @@ export default function Cart() {
                   <td className="text-center">
                     <Counter productId={item.id} maxStock={item.inStock} />
                   </td>
-                  <td className="text-center">{formatMoney(item.price * item.quantity)}</td>
+                  <td className="whitespace-nowrap text-center">{formatMoney(item.price * item.quantity)}</td>
                   <td className="text-center max-md:hidden">
                     <button
                       onClick={() => handleDeleteItemFromCart(item.id)}
@@ -174,11 +174,17 @@ export default function Cart() {
             <div className="grid grid-cols-2 justify-items-center gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
               {comboSuggestions.map((product) => {
                 const isAnotherComboLocked = selectedComboStillInCart && comboProductId !== product.id;
+                const comboPrice = Math.round(product.price * (1 - COMBO_DISCOUNT_PERCENT / 100));
 
                 return (
                   <div key={product.id} className="w-full max-w-[220px]">
                     <div className="mb-3 rounded-2xl border border-dashed border-green-200 bg-green-50 px-3 py-2 text-center text-xs font-medium text-green-700">
                       {product.origin ? `${product.origin} • ` : ""}Giảm thêm {COMBO_DISCOUNT_PERCENT}%
+                    </div>
+                    <div className="mb-3 rounded-2xl border border-green-100 bg-white px-4 py-3 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Giá combo</p>
+                      <p className="mt-2 text-lg font-semibold text-green-600">{formatMoney(comboPrice)}</p>
+                      <p className="mt-1 text-sm text-slate-400 line-through">{formatMoney(product.price)}</p>
                     </div>
                     <ProductCard product={product} compact showQuickBuy={false} />
                     <button
