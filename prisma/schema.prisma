@@ -9,12 +9,19 @@ datasource db {
 }
 
 model User {
-  id       String @id
-  name     String
-  email    String
-  image    String
-  cart     Json   @default("{}")
-  wishlist Json   @default("[]")
+  id                    String    @id
+  name                  String
+  email                 String
+  image                 String
+  cart                  Json      @default("{}")
+  wishlist              Json      @default("[]")
+  membershipPlan        String    @default("free")
+  membershipStatus      String    @default("inactive")
+  membershipPeriod      String?
+  membershipStartedAt   DateTime?
+  membershipExpiresAt   DateTime?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
 
   ratings     Rating[]
   Address     Address[]

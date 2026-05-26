@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { HeartIcon, MenuIcon, PackageIcon, Search, ShoppingCart, XIcon } from "lucide-react";
-import { useUser, useClerk, UserButton, Protect } from "@clerk/nextjs";
+import axios from "axios";
+import { useUser, useClerk, UserButton, useAuth } from "@clerk/nextjs";
 
 const MOBILE_MENU_CLOSE_DELAY = 280;
 
 const Navbar = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { openSignIn } = useClerk();
   const router = useRouter();
   const pathname = usePathname();
@@ -19,6 +21,7 @@ const Navbar = () => {
   const [search, setSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+  const [membership, setMembership] = useState(null);
   const cartCount = useSelector((state) => state.cart.total);
   const wishlistCount = useSelector((state) => state.wishlist.items.length);
 
@@ -32,6 +35,26 @@ const Navbar = () => {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const fetchMembership = async () => {
+      try {
+        if (!user) {
+          setMembership(null);
+          return;
+        }
+        const token = await getToken();
+        const { data } = await axios.get("/api/user/membership", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMembership(data?.membership || null);
+      } catch {
+        setMembership(null);
+      }
+    };
+
+    fetchMembership();
+  }, [user, getToken, pathname]);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -60,6 +83,9 @@ const Navbar = () => {
       document.body.style.overflow = originalOverflow;
     };
   }, [mobileMenuOpen, mobileMenuVisible]);
+
+  const isPlusMember = membership?.membershipPlan === "plus" && membership?.membershipStatus === "active";
+  const isPlusYearly = isPlusMember && membership?.membershipPeriod === "yearly";
 
   const getNavLinkClass = (isActive) =>
     `whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
@@ -114,17 +140,17 @@ const Navbar = () => {
             <span className="text-green-600">Bến Quê </span>
             Market
             <span className="text-5xl leading-0 text-green-600">.</span>
-            {mounted && (
-              <Protect plan="plus">
-                <p className="absolute -right-8 -top-1 flex items-center gap-2 rounded-full bg-green-500 px-3 py-0.5 text-xs font-semibold text-white">
-                  Plus
-                </p>
-              </Protect>
+            {mounted && isPlusMember && (
+              <p className={`absolute -right-8 -top-1 flex items-center gap-2 rounded-full px-3 py-0.5 text-xs font-semibold text-white shadow-sm ${
+                isPlusYearly ? "bg-amber-500 ring-1 ring-amber-200" : "bg-slate-400 ring-1 ring-slate-200"
+              }`}>
+                Plus
+              </p>
             )}
           </Link>
 
           <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 text-slate-600 sm:flex xl:gap-3">
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="ml-2 flex shrink-0 items-center gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -136,7 +162,7 @@ const Navbar = () => {
               ))}
             </div>
 
-            <form onSubmit={handleSearch} className="hidden min-w-[180px] max-w-[220px] flex-1 items-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm xl:flex 2xl:max-w-xs">
+            <form onSubmit={handleSearch} className="hidden min-w-[150px] max-w-[185px] flex-1 items-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm xl:flex 2xl:max-w-[210px]">
               <Search size={18} className="shrink-0 text-slate-600" />
               <input
                 className="w-full min-w-0 bg-transparent outline-none placeholder-slate-600"

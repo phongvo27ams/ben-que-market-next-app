@@ -1,11 +1,12 @@
 import prisma from "../../../lib/prisma";
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
+import { isPlusActiveMember } from "../../../lib/membership";
 
 // Apply a coupon code for the authenticated user
 export async function POST(request) {
   try {
-    const { userId, has } = getAuth(request);
+    const { userId } = getAuth(request);
     const { code } = await request.json();
 
     const coupon = await prisma.coupon.findUnique({
@@ -30,7 +31,14 @@ export async function POST(request) {
     }
 
     if (coupon.forMember) {
-      const hasPlusPlan = has({ plan: "plus" });
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          membershipPlan: true,
+          membershipStatus: true,
+        },
+      });
+      const hasPlusPlan = isPlusActiveMember(currentUser);
       if (!hasPlusPlan) {
         return NextResponse.json({ error: "Coupon valid only for Plus members" }, { status: 400 });
       }

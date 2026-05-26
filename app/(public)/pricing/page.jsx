@@ -1,4 +1,11 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useAuth, useUser } from "@clerk/nextjs";
+import axios from "axios";
+import toast from "react-hot-toast";
 import {
   BadgePercentIcon,
   CheckCircle2Icon,
@@ -18,7 +25,7 @@ const plans = [
     badge: "Dùng ngay",
     priceMonthly: "0 đ",
     priceYearly: "0 đ",
-    description: "Phù hợp để mua sắm hằng ngày, trải nghiệm chợ đặc sản số và khám phá sản phẩm mới.",
+    description: "Phù hợp để mua sắm hằng ngày, trải nghiệm đặc sản vùng miền.",
     ctaLabel: "Bắt đầu miễn phí",
     ctaHref: "/shop",
     ctaClass: "bg-slate-800 text-white hover:bg-slate-900",
@@ -40,14 +47,11 @@ const plans = [
     badge: "Đề xuất",
     priceMonthly: "49.000 đ",
     priceYearly: "499.000 đ",
-    description: "Dành cho khách hàng mua thường xuyên, muốn tiết kiệm hơn trên mỗi đơn và nhận ưu đãi riêng.",
-    ctaLabel: "Nâng cấp Plus",
-    ctaHref: "#so-sanh-goi",
-    ctaClass: "bg-green-600 text-white hover:bg-green-700",
+    description: "Dành cho khách hàng mua thường xuyên, muốn tối ưu chi phí mỗi đơn.",
     features: [
       "Miễn phí vận chuyển cho đơn hàng đủ điều kiện",
       "Được áp dụng coupon độc quyền cho thành viên Plus",
-      "Nhận thông báo ưu đãi theo mùa và chiến dịch sớm hơn",
+      "Nhận ưu đãi theo mùa và chiến dịch sớm hơn",
       "Ưu tiên tiếp cận combo tiết kiệm và quà tặng thành viên",
       "Phù hợp cho khách hàng mua lặp lại mỗi tháng",
     ],
@@ -56,65 +60,130 @@ const plans = [
 ];
 
 const comparisonRows = [
-  {
-    label: "Mua sắm toàn bộ sản phẩm",
-    free: "Có",
-    plus: "Có",
-    icon: ShoppingBagIcon,
-  },
-  {
-    label: "Wishlist và theo dõi đơn hàng",
-    free: "Có",
-    plus: "Có",
-    icon: ShieldCheckIcon,
-  },
-  {
-    label: "Phí vận chuyển",
-    free: "Tính theo đơn",
-    plus: "Miễn phí",
-    icon: TruckIcon,
-  },
-  {
-    label: "Coupon dành riêng cho thành viên",
-    free: "Không",
-    plus: "Có",
-    icon: BadgePercentIcon,
-  },
-  {
-    label: "Ưu đãi theo mùa / quà tặng khách thân thiết",
-    free: "Cơ bản",
-    plus: "Ưu tiên trước",
-    icon: GiftIcon,
-  },
-  {
-    label: "Mức phù hợp",
-    free: "Mua thỉnh thoảng",
-    plus: "Mua thường xuyên",
-    icon: SparklesIcon,
-  },
-];
-
-const reasons = [
-  {
-    title: "Tiết kiệm thực tế trên từng đơn",
-    text: "Miễn phí vận chuyển và coupon riêng giúp thành viên Plus thấy lợi ích rõ ràng ngay trong quá trình thanh toán.",
-    icon: TruckIcon,
-  },
-  {
-    title: "Bạn được chăm sóc tốt hơn",
-    text: "Khách hàng thân thiết sẽ nhận được nhiều ưu đãi riêng, quà riêng và quyền lợi rõ ràng.",
-    icon: CrownIcon,
-  },
-  {
-    title: "Dễ hiểu, dễ quyết định",
-    text: "Chỉ cần hai gói Free và Plus là đủ rõ: một gói để trải nghiệm, một gói để mua sắm thường xuyên và tối ưu chi phí.",
-    icon: CheckCircle2Icon,
-  },
+  { label: "Mua sắm toàn bộ sản phẩm", free: "Có", plus: "Có", icon: ShoppingBagIcon },
+  { label: "Wishlist và theo dõi đơn hàng", free: "Có", plus: "Có", icon: ShieldCheckIcon },
+  { label: "Phí vận chuyển", free: "Tính theo đơn", plus: "Miễn phí", icon: TruckIcon },
+  { label: "Coupon dành riêng cho thành viên", free: "Không", plus: "Có", icon: BadgePercentIcon },
+  { label: "Ưu đãi theo mùa / quà tặng khách thân thiết", free: "Cơ bản", plus: "Ưu tiên trước", icon: GiftIcon },
+  { label: "Mức phù hợp", free: "Mua thỉnh thoảng", plus: "Mua thường xuyên", icon: SparklesIcon },
 ];
 
 export default function PricingPage() {
+  const { user } = useUser();
+  const { getToken } = useAuth();
+  const searchParams = useSearchParams();
+  const [loadingPeriod, setLoadingPeriod] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [membership, setMembership] = useState(null);
+
+  const subscriptionStatus = useMemo(() => searchParams.get("subscription"), [searchParams]);
+  const sessionId = useMemo(() => searchParams.get("session_id"), [searchParams]);
+
+  useEffect(() => {
+    const fetchMembership = async () => {
+      try {
+        if (!user) {
+          setMembership(null);
+          return;
+        }
+        const token = await getToken();
+        const { data } = await axios.get("/api/user/membership", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMembership(data?.membership || null);
+      } catch {
+        setMembership(null);
+      }
+    };
+
+    fetchMembership();
+  }, [user, getToken, subscriptionStatus, sessionId]);
+
+  useEffect(() => {
+    const confirmSubscription = async () => {
+      if (subscriptionStatus !== "success" || !sessionId || !user) return;
+
+      try {
+        setConfirming(true);
+        const token = await getToken();
+        const confirmRes = await axios.post(
+          "/api/subscription/confirm",
+          { sessionId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (confirmRes?.data?.ok === false) {
+          console.warn("Plus confirm pending:", confirmRes?.data?.reason);
+        }
+        const refreshedToken = await getToken();
+        const { data } = await axios.get("/api/user/membership", {
+          headers: { Authorization: `Bearer ${refreshedToken}` },
+        });
+        setMembership(data?.membership || null);
+      } catch (error) {
+        console.error("Error confirming Plus membership:", error);
+        toast.error(error?.response?.data?.error || "Không thể xác nhận Plus lúc này, vui lòng tải lại trang.");
+      } finally {
+        setConfirming(false);
+      }
+    };
+
+    confirmSubscription();
+  }, [subscriptionStatus, sessionId, user, getToken]);
+
+  const isPlusActive = membership?.membershipPlan === "plus" && membership?.membershipStatus === "active";
+  const isPlusMonthly = isPlusActive && membership?.membershipPeriod === "monthly";
+  const isPlusYearly = isPlusActive && membership?.membershipPeriod === "yearly";
+
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "Chưa có dữ liệu";
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return "Chưa có dữ liệu";
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  const startPlusCheckout = async (period) => {
+    try {
+      if (!user) {
+        toast.error("Vui lòng đăng nhập trước khi nâng cấp Plus");
+        return;
+      }
+
+      setLoadingPeriod(period);
+      const token = await getToken();
+      const { data } = await axios.post(
+        "/api/subscription/checkout",
+        { period },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data?.session?.url) {
+        window.location.href = data.session.url;
+      } else {
+        toast.error("Không thể tạo phiên thanh toán");
+      }
+    } catch (error) {
+      console.error("Error starting Plus checkout:", error);
+      toast.error(error?.response?.data?.error || error.message);
+    } finally {
+      setLoadingPeriod("");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-14 text-slate-800 sm:px-8 lg:px-10">
+      {subscriptionStatus === "success" && (
+        <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {confirming
+            ? "Thanh toán thành công. Đang kích hoạt Plus cho tài khoản của bạn..."
+            : "Thanh toán thành công. Tài khoản của bạn đã được nâng cấp Plus."}
+        </div>
+      )}
+      {subscriptionStatus === "cancelled" && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          Bạn đã hủy phiên thanh toán. Có thể thử lại bất cứ lúc nào.
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.22),_transparent_34%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-6 py-10 sm:px-10 sm:py-14">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-sm font-medium text-green-700">
@@ -122,12 +191,29 @@ export default function PricingPage() {
             Gói thành viên Bến Quê Market
           </div>
           <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-5xl">
-            Chọn gói phù hợp để mua sắm đặc sản thông minh hơn
+            Chọn gói phù hợp để mua sắm thông minh hơn
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-            Chúng tôi đề xuất giữ cấu trúc đơn giản với 2 gói: <span className="font-semibold text-slate-800">Free</span> để bắt đầu
-            trải nghiệm, và <span className="font-semibold text-green-700">Plus</span> dành riêng cho khách hàng mua thường xuyên bằng nhiều ưu đãi thật sự hấp dẫn.
-          </p>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-3xl border border-amber-100 bg-[linear-gradient(135deg,_rgba(255,251,235,1)_0%,_rgba(255,255,255,1)_100%)] px-6 py-5 sm:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Trạng thái thành viên</p>
+            <p className="mt-2 text-xl font-semibold text-slate-900">
+              {isPlusActive ? `Gói hiện tại: Plus (${membership?.membershipPeriod === "yearly" ? "Năm" : "Tháng"})` : "Gói hiện tại: Free"}
+            </p>
+          </div>
+          <div className="grid gap-2 text-sm text-slate-600 sm:text-right">
+            <p>
+              <span className="font-medium text-slate-800">Ngày kích hoạt:</span>{" "}
+              {formatDate(membership?.membershipStartedAt)}
+            </p>
+            <p>
+              <span className="font-medium text-slate-800">Ngày hết hạn:</span>{" "}
+              {formatDate(membership?.membershipExpiresAt)}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -183,26 +269,45 @@ export default function PricingPage() {
               </div>
             )}
 
-            <Link
-              href={plan.ctaHref}
-              className={`mt-7 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-semibold transition sm:text-base ${plan.ctaClass}`}
-            >
-              {plan.ctaLabel}
-            </Link>
+            {plan.name === "Free" ? (
+              <Link
+                href={plan.ctaHref}
+                className={`mt-7 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-semibold transition sm:text-base ${plan.ctaClass}`}
+              >
+                {plan.ctaLabel}
+              </Link>
+            ) : (
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                {!isPlusMonthly && !isPlusYearly && (
+                  <button
+                    type="button"
+                    onClick={() => startPlusCheckout("monthly")}
+                    disabled={loadingPeriod !== ""}
+                    className="rounded-2xl bg-green-600 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+                  >
+                    {loadingPeriod === "monthly" ? "Đang chuyển..." : "Nâng cấp Plus tháng"}
+                  </button>
+                )}
+                {!isPlusYearly && (
+                  <button
+                    type="button"
+                    onClick={() => startPlusCheckout("yearly")}
+                    disabled={loadingPeriod !== ""}
+                    className="rounded-2xl bg-slate-800 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {loadingPeriod === "yearly" ? "Đang chuyển..." : "Nâng cấp Plus năm"}
+                  </button>
+                )}
+                {isPlusActive && (
+                  <p className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">Tài khoản đã có đầy đủ quyền Plus.</p>
+                )}
+              </div>
+            )}
           </article>
         ))}
       </section>
 
       <section id="so-sanh-goi" className="mt-14 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-green-600">So sánh ưu đãi</p>
-          <h2 className="mt-3 text-3xl font-semibold text-slate-900">Free và Plus khác nhau ở đâu?</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">
-            Điểm khác biệt quan trọng nhất là <span className="font-semibold text-slate-800">Plus mang lại lợi ích tài chính lặp lại</span>:
-            miễn phí vận chuyển, coupon riêng và các ưu đãi dành cho khách hàng thân thiết.
-          </p>
-        </div>
-
         <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200">
           <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr] bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 sm:px-6 sm:text-base">
             <p>Quyền lợi</p>
@@ -211,7 +316,6 @@ export default function PricingPage() {
           </div>
           {comparisonRows.map((row) => {
             const Icon = row.icon;
-
             return (
               <div
                 key={row.label}

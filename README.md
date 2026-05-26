@@ -46,6 +46,44 @@ Start the application in development mode. Next.js will compile the project and 
 npm run dev
 ```
 
+## Backup and Restore Database
+
+### Backup current database
+
+Create a new snapshot backup (custom format) from the current `DATABASE_URL` in `.env`:
+
+```bash
+npm run db:backup
+```
+
+Create a labeled baseline backup immediately:
+
+```bash
+npm run db:backup:now
+```
+
+Backup files are stored in:
+
+`backups/db/`
+
+The latest backup filename is tracked in:
+
+`backups/db/LATEST.txt`
+
+### Restore database to latest backup
+
+Restore DB from the latest backup snapshot:
+
+```bash
+npm run db:restore:latest
+```
+
+### Important notes
+
+- `restore` will overwrite current database objects (`--clean --if-exists`).
+- Always run a fresh backup before restoring if current data is important.
+- Backup/restore uses `DATABASE_URL` from `.env`, so verify environment before running.
+
 ## Available Scripts
 
 In the project directory, you can run the following standard Next.js scripts:

@@ -2,6 +2,7 @@ import prisma from "../../../lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { isPlusActiveMember } from "../../../lib/membership";
 
 const getAvailableStock = (product) => Number(product?.inStock ?? 0);
 const SHIPPING_FEE = 50000;
@@ -10,7 +11,7 @@ const STRIPE_CURRENCY = "vnd";
 // Place a new order for the authenticated user
 export async function POST(request) {
   try {
-    const { userId, has } = getAuth(request);
+    const { userId } = getAuth(request);
 
     if (!userId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -45,8 +46,15 @@ export async function POST(request) {
       }
     }
 
-    // Coupon validation for members
-    const isPlusMember = has({ plan: "plus" });
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        membershipPlan: true,
+        membershipStatus: true,
+      },
+    });
+
+    const isPlusMember = isPlusActiveMember(currentUser);
 
     if (couponCode && coupon.forMember) {
       if (!isPlusMember) {
