@@ -19,6 +19,10 @@ export default function AdminCoupons() {
     isPublic: false,
     expiresAt: new Date(),
   });
+  const [comboSetting, setComboSetting] = useState({
+    maxComboItems: 1,
+    comboDiscountPercent: 10,
+  });
 
   const fetchCoupons = async () => {
     try {
@@ -26,7 +30,24 @@ export default function AdminCoupons() {
       const { data } = await axios.get("/api/admin/coupon", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setCoupons(data.coupons);
+      setCoupons(data.coupons || []);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
+
+  const fetchComboSetting = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get("/api/admin/combo-setting", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data?.setting) {
+        setComboSetting({
+          maxComboItems: data.setting.maxComboItems,
+          comboDiscountPercent: data.setting.comboDiscountPercent,
+        });
+      }
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message);
     }
@@ -41,11 +62,33 @@ export default function AdminCoupons() {
         discount: Number(newCoupon.discount),
         expiresAt: new Date(newCoupon.expiresAt),
       };
+
       const { data } = await axios.post("/api/admin/coupon", { coupon: payload }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success(data.message);
       await fetchCoupons();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
+
+  const handleUpdateComboSetting = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await getToken();
+      const payload = {
+        maxComboItems: Number(comboSetting.maxComboItems),
+        comboDiscountPercent: Number(comboSetting.comboDiscountPercent),
+      };
+      const { data } = await axios.put("/api/admin/combo-setting", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success(data.message || "Đã cập nhật cấu hình combo");
+      setComboSetting({
+        maxComboItems: data.setting.maxComboItems,
+        comboDiscountPercent: data.setting.comboDiscountPercent,
+      });
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message);
     }
@@ -68,6 +111,7 @@ export default function AdminCoupons() {
 
   useEffect(() => {
     fetchCoupons();
+    fetchComboSetting();
   }, []);
 
   return (
@@ -128,6 +172,39 @@ export default function AdminCoupons() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="mt-14 max-w-sm text-sm">
+        <h2 className="text-2xl">Quản lý <span className="font-medium text-slate-800">Combo</span></h2>
+        <form onSubmit={(e) => toast.promise(handleUpdateComboSetting(e), { loading: "Đang cập nhật cấu hình combo..." })}>
+          <label className="mt-4 block">
+            <p>Số sản phẩm combo tối đa</p>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
+              value={comboSetting.maxComboItems}
+              onChange={(e) => setComboSetting({ ...comboSetting, maxComboItems: e.target.value })}
+              required
+            />
+          </label>
+          <label className="mt-3 block">
+            <p>Mức giảm combo (%)</p>
+            <input
+              type="number"
+              min={1}
+              max={90}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
+              value={comboSetting.comboDiscountPercent}
+              onChange={(e) => setComboSetting({ ...comboSetting, comboDiscountPercent: e.target.value })}
+              required
+            />
+          </label>
+          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
+            Lưu cấu hình combo
+          </button>
+        </form>
       </div>
     </div>
   );

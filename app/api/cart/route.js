@@ -4,15 +4,20 @@ import { NextResponse } from "next/server";
 
 const normalizeCartPayload = (cart) => {
   if (cart && typeof cart === "object" && !Array.isArray(cart) && cart.items) {
+    const comboProductIds = Array.isArray(cart.comboProductIds)
+      ? cart.comboProductIds
+      : cart.comboProductId
+      ? [cart.comboProductId]
+      : [];
     return {
       items: cart.items || {},
-      comboProductId: cart.comboProductId || null,
+      comboProductIds,
     };
   }
 
   return {
     items: cart || {},
-    comboProductId: null,
+    comboProductIds: [],
   };
 };
 
@@ -21,7 +26,7 @@ export async function POST(request) {
   try {
     const { userId } = getAuth(request);
     const { cart } = await request.json();
-    const { items, comboProductId } = normalizeCartPayload(cart);
+    const { items, comboProductIds } = normalizeCartPayload(cart);
 
     const productIds = Object.keys(items || {});
     const products = productIds.length > 0
@@ -43,12 +48,15 @@ export async function POST(request) {
       }
     }
 
+    const validComboProductIds = comboProductIds.filter((id) => Boolean(sanitizedCart[id]));
+
     await prisma.user.update({
       where: { id: userId },
       data: {
         cart: {
           items: sanitizedCart,
-          comboProductId: sanitizedCart[comboProductId] ? comboProductId : null,
+          comboProductIds: validComboProductIds,
+          comboProductId: validComboProductIds[0] || null,
         },
       },
     });
@@ -56,7 +64,8 @@ export async function POST(request) {
     return NextResponse.json({
       message: "Cart updated successfully",
       cart: sanitizedCart,
-      comboProductId: sanitizedCart[comboProductId] ? comboProductId : null,
+      comboProductIds: validComboProductIds,
+      comboProductId: validComboProductIds[0] || null,
     }, { status: 200 });
   } catch (error) {
     console.error("Error updating user cart:", error);
@@ -72,7 +81,7 @@ export async function GET(request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    const { items, comboProductId } = normalizeCartPayload(user?.cart || {});
+    const { items, comboProductIds } = normalizeCartPayload(user?.cart || {});
     const productIds = Object.keys(items);
     const products = productIds.length > 0
       ? await prisma.product.findMany({
@@ -92,9 +101,11 @@ export async function GET(request) {
       }
     }
 
+    const validComboProductIds = comboProductIds.filter((id) => Boolean(sanitizedCart[id]));
     const nextCartData = {
       items: sanitizedCart,
-      comboProductId: sanitizedCart[comboProductId] ? comboProductId : null,
+      comboProductIds: validComboProductIds,
+      comboProductId: validComboProductIds[0] || null,
     };
 
     if (JSON.stringify(nextCartData) !== JSON.stringify(user?.cart || {})) {
@@ -106,6 +117,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       cart: sanitizedCart,
+      comboProductIds: nextCartData.comboProductIds,
       comboProductId: nextCartData.comboProductId,
     }, { status: 200 });
   } catch (error) {

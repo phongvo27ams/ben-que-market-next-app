@@ -14,16 +14,21 @@ import ProductCard from "../../../components/ProductCard";
 import { deleteItemFromCart, addToCart, setComboProduct } from "../../../lib/features/cart/cartSlice";
 import { formatMoney } from "../../../lib/format";
 
-const COMBO_DISCOUNT_PERCENT = 10;
-const MAX_COMBO_ITEMS = 1;
+const DEFAULT_COMBO_DISCOUNT_PERCENT = 10;
+const DEFAULT_MAX_COMBO_ITEMS = 1;
 
 export default function Cart() {
-  const { cartItems, comboProductId } = useSelector((state) => state.cart);
+  const { cartItems, comboProductIds = [] } = useSelector((state) => state.cart);
   const products = useSelector((state) => state.product.list);
   const dispatch = useDispatch();
 
   const [cartArray, setCartArray] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [membershipPlan, setMembershipPlan] = useState("free");
+  const [membershipStatus, setMembershipStatus] = useState("inactive");
+  const [comboDiscountPercent, setComboDiscountPercent] = useState(DEFAULT_COMBO_DISCOUNT_PERCENT);
+  const [maxComboItems, setMaxComboItems] = useState(DEFAULT_MAX_COMBO_ITEMS);
+  const isPlusMember = membershipPlan === "plus" && membershipStatus === "active";
 
   const createCartArray = () => {
     let nextTotalPrice = 0;
@@ -49,10 +54,15 @@ export default function Cart() {
   };
 
   const handleAddComboProduct = (product) => {
-    const selectedComboStillInCart = comboProductId && cartItems[comboProductId];
+    if (!isPlusMember) {
+      toast.error("Ưu đãi combo chỉ dành cho thành viên Plus.");
+      return;
+    }
 
-    if (selectedComboStillInCart && comboProductId !== product.id) {
-      toast.error(`Bạn chỉ có thể thêm tối đa ${MAX_COMBO_ITEMS} sản phẩm combo`);
+    const currentComboCount = comboProductIds.filter((id) => Boolean(cartItems[id])).length;
+    const isCurrentProductAlreadyCombo = comboProductIds.includes(product.id);
+    if (!isCurrentProductAlreadyCombo && currentComboCount >= maxComboItems) {
+      toast.error(`Bạn chỉ có thể thêm tối đa ${maxComboItems} sản phẩm combo`);
       return;
     }
 
@@ -68,7 +78,7 @@ export default function Cart() {
 
     dispatch(addToCart({ productId: product.id }));
     dispatch(setComboProduct({ productId: product.id }));
-    toast.success(`Đã thêm sản phẩm combo với ưu đãi ${COMBO_DISCOUNT_PERCENT}%`);
+    toast.success(`Đã thêm sản phẩm combo với ưu đãi ${comboDiscountPercent}%`);
   };
 
   useEffect(() => {
@@ -76,6 +86,44 @@ export default function Cart() {
       createCartArray();
     }
   }, [cartItems, products]);
+
+  useEffect(() => {
+    const fetchMembership = async () => {
+      try {
+        const response = await fetch("/api/user/membership", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const plan = data?.membership?.membershipPlan || "free";
+        const status = data?.membership?.membershipStatus || "inactive";
+        setMembershipPlan(plan);
+        setMembershipStatus(status);
+      } catch {
+        setMembershipPlan("free");
+        setMembershipStatus("inactive");
+      }
+    };
+
+    fetchMembership();
+  }, []);
+
+  useEffect(() => {
+    const fetchComboSetting = async () => {
+      try {
+        const response = await fetch("/api/combo-setting", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const maxItems = Number(data?.setting?.maxComboItems);
+        const discount = Number(data?.setting?.comboDiscountPercent);
+        if (Number.isInteger(maxItems) && maxItems > 0) setMaxComboItems(maxItems);
+        if (!Number.isNaN(discount) && discount > 0) setComboDiscountPercent(discount);
+      } catch {
+        setMaxComboItems(DEFAULT_MAX_COMBO_ITEMS);
+        setComboDiscountPercent(DEFAULT_COMBO_DISCOUNT_PERCENT);
+      }
+    };
+
+    fetchComboSetting();
+  }, []);
 
   const comboSuggestions = useMemo(() => {
     if (!cartArray.length) return [];
@@ -96,7 +144,8 @@ export default function Cart() {
       .slice(0, 4);
   }, [cartArray, products]);
 
-  const selectedComboStillInCart = comboProductId && cartItems[comboProductId];
+  const selectedComboIds = comboProductIds.filter((id) => Boolean(cartItems[id]));
+  const selectedComboCount = selectedComboIds.length;
 
   return cartArray.length > 0 ? (
     <div className="mx-6 min-h-screen text-slate-800">
@@ -154,32 +203,42 @@ export default function Cart() {
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-[0.2em] text-green-600">Gợi ý combo</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-800">Chọn thêm 1 sản phẩm phù hợp</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-800">Chọn thêm {maxComboItems} sản phẩm phù hợp</h2>
                 <p className="mt-2 max-w-2xl text-sm text-slate-500">
                   Hệ thống chỉ gợi ý các sản phẩm cùng danh mục hoặc cùng xuất xứ với giỏ hàng hiện tại.
-                  Bạn chỉ có thể thêm tối đa {MAX_COMBO_ITEMS} sản phẩm combo để nhận ưu đãi thêm {COMBO_DISCOUNT_PERCENT}%.
+                  {isPlusMember
+                    ? ` Bạn có thể thêm tối đa ${maxComboItems} sản phẩm combo để nhận ưu đãi thêm ${comboDiscountPercent}%.`
+                    : " Ưu đãi combo chỉ dành cho thành viên Plus. Nâng cấp Plus để mở khóa giảm giá combo."}
                 </p>
               </div>
               <div className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">
-                Ưu đãi combo hiện tại: <span className="font-semibold">-{COMBO_DISCOUNT_PERCENT}%</span>
+                Ưu đãi combo hiện tại: <span className="font-semibold">-{comboDiscountPercent}%</span>
               </div>
             </div>
 
-            {selectedComboStillInCart && (
+            {selectedComboCount > 0 && (
               <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                Bạn đã thêm 1 sản phẩm combo. Hãy xóa sản phẩm combo hiện tại khỏi giỏ nếu muốn chọn sản phẩm combo khác.
+                Bạn đã thêm {selectedComboCount}/{maxComboItems} sản phẩm combo.
+              </div>
+            )}
+
+            {!isPlusMember && (
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Bạn đang dùng tài khoản thường. Đăng ký Plus để thêm sản phẩm combo và nhận giảm giá trực tiếp cho sản phẩm combo.
               </div>
             )}
 
             <div className="grid grid-cols-2 justify-items-center gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
               {comboSuggestions.map((product) => {
-                const isAnotherComboLocked = selectedComboStillInCart && comboProductId !== product.id;
-                const comboPrice = Math.round(product.price * (1 - COMBO_DISCOUNT_PERCENT / 100));
+                const isComboSelected = selectedComboIds.includes(product.id);
+                const isAnotherComboLocked = !isComboSelected && selectedComboCount >= maxComboItems;
+                const isComboDisabled = !isPlusMember || Boolean(isAnotherComboLocked);
+                const comboPrice = Math.round(product.price * (1 - comboDiscountPercent / 100));
 
                 return (
                   <div key={product.id} className="w-full max-w-[220px]">
                     <div className="mb-3 rounded-2xl border border-dashed border-green-200 bg-green-50 px-3 py-2 text-center text-xs font-medium text-green-700">
-                      {product.origin ? `${product.origin} • ` : ""}Giảm thêm {COMBO_DISCOUNT_PERCENT}%
+                      {product.origin ? `${product.origin} • ` : ""}Giảm thêm {comboDiscountPercent}%
                     </div>
                     <div className="mb-3 rounded-2xl border border-green-100 bg-white px-4 py-3 text-center">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Giá combo</p>
@@ -190,16 +249,18 @@ export default function Cart() {
                     <button
                       type="button"
                       onClick={() => handleAddComboProduct(product)}
-                      disabled={Boolean(isAnotherComboLocked)}
+                      disabled={isComboDisabled}
                       className={`mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-medium transition ${
-                        isAnotherComboLocked
+                        isComboDisabled
                           ? "cursor-not-allowed bg-slate-200 text-slate-500"
                           : "bg-green-600 text-white hover:bg-green-700"
                       }`}
                     >
-                      {isAnotherComboLocked
-                        ? "Đã đủ 1 sản phẩm combo"
-                        : `Thêm combo -${COMBO_DISCOUNT_PERCENT}%`}
+                      {!isPlusMember
+                        ? "Dành riêng cho Plus"
+                        : isAnotherComboLocked
+                        ? `Đã đủ ${maxComboItems} sản phẩm combo`
+                        : `Thêm combo -${comboDiscountPercent}%`}
                     </button>
                   </div>
                 );

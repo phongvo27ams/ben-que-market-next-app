@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { PlusIcon, SquarePenIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,9 @@ import AddressModal from "./AddressModal";
 import { formatMoney } from "../lib/format";
 import { fetchCart } from "../lib/features/cart/cartSlice";
 
+const DEFAULT_COMBO_DISCOUNT_PERCENT = 10;
+const DEFAULT_MAX_COMBO_ITEMS = 1;
+
 const OrderSummary = ({ totalPrice, items }) => {
   const { user } = useUser();
   const { getToken } = useAuth();
@@ -18,6 +21,7 @@ const OrderSummary = ({ totalPrice, items }) => {
 
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "$";
   const addressList = useSelector((state) => state.address.list);
+  const { cartItems, comboProductIds = [] } = useSelector((state) => state.cart);
   const shippingFee = 50000;
   const plusFreeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
 
@@ -27,6 +31,8 @@ const OrderSummary = ({ totalPrice, items }) => {
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [coupon, setCoupon] = useState("");
   const [isPlusMember, setIsPlusMember] = useState(false);
+  const [comboDiscountPercent, setComboDiscountPercent] = useState(DEFAULT_COMBO_DISCOUNT_PERCENT);
+  const [maxComboItems, setMaxComboItems] = useState(DEFAULT_MAX_COMBO_ITEMS);
 
   useEffect(() => {
     const fetchMembership = async () => {
@@ -49,21 +55,50 @@ const OrderSummary = ({ totalPrice, items }) => {
     fetchMembership();
   }, [user, getToken]);
 
+  useEffect(() => {
+    const fetchComboSetting = async () => {
+      try {
+        const response = await fetch("/api/combo-setting", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const maxItems = Number(data?.setting?.maxComboItems);
+        const discount = Number(data?.setting?.comboDiscountPercent);
+        if (Number.isInteger(maxItems) && maxItems > 0) setMaxComboItems(maxItems);
+        if (!Number.isNaN(discount) && discount > 0) setComboDiscountPercent(discount);
+      } catch {
+        setMaxComboItems(DEFAULT_MAX_COMBO_ITEMS);
+        setComboDiscountPercent(DEFAULT_COMBO_DISCOUNT_PERCENT);
+      }
+    };
+
+    fetchComboSetting();
+  }, []);
+
+  const selectedComboIds = useMemo(
+    () => comboProductIds.filter((id) => Boolean(cartItems[id])).slice(0, maxComboItems),
+    [comboProductIds, cartItems, maxComboItems]
+  );
+
+  const comboDiscountAmount = useMemo(() => {
+    if (!isPlusMember) return 0;
+    return selectedComboIds.reduce((sum, comboId) => {
+      const comboItem = items.find((item) => item.id === comboId);
+      if (!comboItem) return sum;
+      return sum + comboItem.price * (comboDiscountPercent / 100);
+    }, 0);
+  }, [isPlusMember, selectedComboIds, items, comboDiscountPercent]);
+
   const handleCouponCode = async (e) => {
     e.preventDefault();
 
     try {
-      if (!user) {
-        return toast.error("Vui lòng đăng nhập để áp dụng mã giảm giá");
-      }
+      if (!user) return toast.error("Vui lòng đăng nhập để áp dụng mã giảm giá");
 
       const token = await getToken();
       const { data } = await axios.post(
         "/api/coupon",
         { code: couponCodeInput },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setCoupon(data.coupon);
@@ -78,25 +113,17 @@ const OrderSummary = ({ totalPrice, items }) => {
     e.preventDefault();
 
     try {
-      if (!user) {
-        return toast.error("Vui lòng đăng nhập để đặt hàng");
-      }
-
-      if (!selectedAddress) {
-        return toast.error("Vui lòng chọn địa chỉ nhận hàng");
-      }
+      if (!user) return toast.error("Vui lòng đăng nhập để đặt hàng");
+      if (!selectedAddress) return toast.error("Vui lòng chọn địa chỉ nhận hàng");
 
       const token = await getToken();
-
       const orderData = {
         addressId: selectedAddress.id,
         items,
         paymentMethod,
       };
 
-      if (coupon) {
-        orderData.couponCode = coupon.code;
-      }
+      if (coupon) orderData.couponCode = coupon.code;
 
       const { data } = await axios.post("/api/orders", orderData, {
         headers: { Authorization: `Bearer ${token}` },
@@ -115,8 +142,9 @@ const OrderSummary = ({ totalPrice, items }) => {
     }
   };
 
-  const discountAmount = coupon ? (coupon.discount / 100) * totalPrice : 0;
-  const subtotalAfterDiscount = totalPrice - discountAmount;
+  const subtotalAfterCombo = Math.max(0, totalPrice - comboDiscountAmount);
+  const couponAmount = coupon ? (coupon.discount / 100) * subtotalAfterCombo : 0;
+  const subtotalAfterDiscount = subtotalAfterCombo - couponAmount;
   const qualifiesPlusFreeShip = isPlusMember && subtotalAfterDiscount >= plusFreeShipMinOrder;
   const finalTotal = qualifiesPlusFreeShip ? subtotalAfterDiscount : subtotalAfterDiscount + shippingFee;
 
@@ -127,25 +155,12 @@ const OrderSummary = ({ totalPrice, items }) => {
       <p className="my-4 text-xs text-slate-400">Phương thức thanh toán</p>
 
       <div className="flex items-center gap-2">
-        <input
-          type="radio"
-          id="COD"
-          onChange={() => setPaymentMethod("COD")}
-          checked={paymentMethod === "COD"}
-          className="accent-gray-500"
-        />
+        <input type="radio" id="COD" onChange={() => setPaymentMethod("COD")} checked={paymentMethod === "COD"} className="accent-gray-500" />
         <label htmlFor="COD" className="cursor-pointer">Thanh toán khi nhận hàng</label>
       </div>
 
       <div className="mt-1 flex items-center gap-2">
-        <input
-          type="radio"
-          id="STRIPE"
-          name="payment"
-          onChange={() => setPaymentMethod("STRIPE")}
-          checked={paymentMethod === "STRIPE"}
-          className="accent-gray-500"
-        />
+        <input type="radio" id="STRIPE" name="payment" onChange={() => setPaymentMethod("STRIPE")} checked={paymentMethod === "STRIPE"} className="accent-gray-500" />
         <label htmlFor="STRIPE" className="cursor-pointer">Thanh toán qua Stripe</label>
       </div>
 
@@ -159,10 +174,7 @@ const OrderSummary = ({ totalPrice, items }) => {
         ) : (
           <div>
             {addressList.length > 0 && (
-              <select
-                className="my-3 w-full rounded border border-slate-400 p-2 outline-none"
-                onChange={(e) => setSelectedAddress(addressList[e.target.value])}
-              >
+              <select className="my-3 w-full rounded border border-slate-400 p-2 outline-none" onChange={(e) => setSelectedAddress(addressList[e.target.value])}>
                 <option value="">Chọn địa chỉ</option>
                 {addressList.map((address, index) => (
                   <option key={index} value={index}>
@@ -182,34 +194,33 @@ const OrderSummary = ({ totalPrice, items }) => {
         <div className="flex justify-between">
           <div className="flex flex-col gap-1 text-slate-400">
             <p>Tạm tính:</p>
+            {comboDiscountAmount > 0 && <p>Giảm combo:</p>}
             <p>Phí vận chuyển:</p>
             {coupon && <p>Mã giảm giá:</p>}
           </div>
 
           <div className="flex flex-col gap-1 text-right font-medium">
             <p>{formatMoney(totalPrice, currency)}</p>
+            {comboDiscountAmount > 0 && <p>{`-${formatMoney(comboDiscountAmount, currency)}`}</p>}
             {qualifiesPlusFreeShip ? <p>Miễn phí</p> : <p>{formatMoney(shippingFee, currency)}</p>}
-            {coupon && <p>{`-${formatMoney(discountAmount, currency)}`}</p>}
+            {coupon && <p>{`-${formatMoney(couponAmount, currency)}`}</p>}
           </div>
         </div>
+
         {isPlusMember && !qualifiesPlusFreeShip && (
           <p className="mt-2 text-xs text-amber-600">
             Plus miễn phí vận chuyển cho đơn từ {formatMoney(plusFreeShipMinOrder, currency)}
           </p>
         )}
+        {!isPlusMember && (
+          <p className="mt-2 text-xs text-amber-600">
+            Nâng cấp Plus để được miễn phí vận chuyển cho đơn từ {formatMoney(plusFreeShipMinOrder, currency)}
+          </p>
+        )}
 
         {!coupon ? (
-          <form
-            onSubmit={(e) => toast.promise(handleCouponCode(e), { loading: "Đang kiểm tra mã..." })}
-            className="mt-3 flex justify-center gap-3"
-          >
-            <input
-              onChange={(e) => setCouponCodeInput(e.target.value)}
-              value={couponCodeInput}
-              type="text"
-              placeholder="Mã giảm giá"
-              className="w-full rounded border border-slate-400 p-1.5 outline-none"
-            />
+          <form onSubmit={(e) => toast.promise(handleCouponCode(e), { loading: "Đang kiểm tra mã..." })} className="mt-3 flex justify-center gap-3">
+            <input onChange={(e) => setCouponCodeInput(e.target.value)} value={couponCodeInput} type="text" placeholder="Mã giảm giá" className="w-full rounded border border-slate-400 p-1.5 outline-none" />
             <button className="min-w-fit whitespace-nowrap rounded bg-slate-600 px-3 text-white transition-all hover:bg-slate-800 active:scale-95">
               Áp dụng
             </button>
@@ -228,10 +239,7 @@ const OrderSummary = ({ totalPrice, items }) => {
         <p className="text-right font-medium">{formatMoney(finalTotal, currency)}</p>
       </div>
 
-      <button
-        onClick={(e) => toast.promise(handlePlaceOrder(e), { loading: "Đang đặt hàng..." })}
-        className="w-full rounded bg-slate-700 py-2.5 text-white transition-all hover:bg-slate-900 active:scale-95"
-      >
+      <button onClick={(e) => toast.promise(handlePlaceOrder(e), { loading: "Đang đặt hàng..." })} className="w-full rounded bg-slate-700 py-2.5 text-white transition-all hover:bg-slate-900 active:scale-95">
         Đặt hàng
       </button>
 

@@ -9,6 +9,8 @@ const getAvailableStock = (product) => Number(product?.inStock ?? 0);
 const SHIPPING_FEE = 50000;
 const STRIPE_CURRENCY = "vnd";
 const PLUS_FREE_SHIP_MIN_ORDER = Number(process.env.PLUS_FREE_SHIP_MIN_ORDER || 199000);
+const DEFAULT_COMBO_DISCOUNT_PERCENT = 10;
+const DEFAULT_MAX_COMBO_ITEMS = 1;
 
 // Place a new order for the authenticated user
 export async function POST(request) {
@@ -53,6 +55,7 @@ export async function POST(request) {
       select: {
         membershipPlan: true,
         membershipStatus: true,
+        cart: true,
       },
     });
 
@@ -88,8 +91,36 @@ export async function POST(request) {
       normalizedItems.push({ id: item.id, quantity: item.quantity, price: product.price });
     }
 
+    const comboSetting = await prisma.comboSetting.findUnique({
+      where: { id: 1 },
+      select: {
+        maxComboItems: true,
+        comboDiscountPercent: true,
+      },
+    });
+    const maxComboItems = comboSetting?.maxComboItems || DEFAULT_MAX_COMBO_ITEMS;
+    const comboDiscountPercent = comboSetting?.comboDiscountPercent || DEFAULT_COMBO_DISCOUNT_PERCENT;
+
+    const rawComboIds = Array.isArray(currentUser?.cart?.comboProductIds)
+      ? currentUser.cart.comboProductIds
+      : currentUser?.cart?.comboProductId
+      ? [currentUser.cart.comboProductId]
+      : [];
+    const orderItemIdSet = new Set(normalizedItems.map((item) => item.id));
+    const eligibleComboIds = isPlusMember
+      ? rawComboIds.filter((id) => orderItemIdSet.has(id)).slice(0, maxComboItems)
+      : [];
+
+    let comboDiscountAmount = 0;
+    for (const comboId of eligibleComboIds) {
+      const comboItem = normalizedItems.find((item) => item.id === comboId);
+      if (!comboItem) continue;
+      comboDiscountAmount += comboItem.price * (comboDiscountPercent / 100);
+    }
+
     await prisma.$transaction(async (tx) => {
-      let total = subtotal;
+      let total = subtotal - comboDiscountAmount;
+      if (total < 0) total = 0;
       if (couponCode && coupon) {
         total -= (coupon.discount / 100) * total;
       }
