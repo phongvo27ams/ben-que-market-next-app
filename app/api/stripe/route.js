@@ -21,35 +21,122 @@ const resolveSubscriptionPeriod = (subscription) => {
   return { start, end };
 };
 
+const finalizeOrderCheckoutSession = async (checkoutSessionObject, isPaid) => {
+  const metadata = checkoutSessionObject?.metadata || {};
+  const { orderIds, userId, appId, type } = metadata;
+  console.log("[STRIPE][finalizeOrderCheckoutSession] start", {
+    sessionId: checkoutSessionObject?.id,
+    paymentStatus: checkoutSessionObject?.payment_status,
+    isPaidArg: isPaid,
+    metadata,
+  });
+
+  // Ignore membership checkout sessions here.
+  if (type === "plus_membership") {
+    console.log("[STRIPE][finalizeOrderCheckoutSession] skip membership session");
+    return;
+  }
+
+  if (!orderIds || !userId || !appId) {
+    console.log("[STRIPE][finalizeOrderCheckoutSession] missing metadata", { orderIds, userId, appId });
+    return;
+  }
+  if (appId !== process.env.NEXT_PUBLIC_APP_ID) {
+    console.log("[STRIPE][finalizeOrderCheckoutSession] appId mismatch", {
+      appIdFromSession: appId,
+      expectedAppId: process.env.NEXT_PUBLIC_APP_ID,
+    });
+    return;
+  }
+
+  const orderIdsArray = orderIds.split(",").filter(Boolean);
+  if (!orderIdsArray.length) {
+    console.log("[STRIPE][finalizeOrderCheckoutSession] empty orderIdsArray");
+    return;
+  }
+  console.log("[STRIPE][finalizeOrderCheckoutSession] orderIdsArray", orderIdsArray);
+
+  if (isPaid) {
+    await Promise.all(orderIdsArray.map(async (orderId) => {
+      const order = await prisma.order.update({
+        where: { id: orderId },
+        data: { isPaid: true },
+        include: { orderItems: true },
+      });
+      console.log("[STRIPE][finalizeOrderCheckoutSession] marked paid", { orderId, isPaid: order.isPaid });
+
+      await Promise.all(order.orderItems.map(async (item) => {
+        const updatedProduct = await prisma.product.updateMany({
+          where: {
+            id: item.productId,
+            inStock: { gte: item.quantity },
+          },
+          data: {
+            inStock: { decrement: item.quantity },
+          },
+        });
+
+        if (updatedProduct.count === 0) {
+          throw new Error("Insufficient stock while finalizing Stripe payment");
+        }
+      }));
+    }));
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { cart: {} },
+    });
+    console.log("[STRIPE][finalizeOrderCheckoutSession] cart cleared", { userId });
+  } else {
+    console.log("[STRIPE][finalizeOrderCheckoutSession] session not paid, deleting orders", { orderIdsArray });
+    await Promise.all(orderIdsArray.map(async (orderId) => {
+      await prisma.order.delete({
+        where: { id: orderId },
+      });
+      console.log("[STRIPE][finalizeOrderCheckoutSession] deleted unpaid order", { orderId });
+    }));
+  }
+};
+
 // Handle Stripe webhooks
 export async function POST(request) {
   try {
     const body = await request.text();
     const signature = request.headers.get("stripe-signature");
     const event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log("[STRIPE][webhook] event received", { type: event.type });
 
     const handlePaymentIndent = async (paymentIndentId, isPaid) => {
+      console.log("[STRIPE][handlePaymentIntent] start", { paymentIndentId, isPaid });
       const session = await stripe.checkout.sessions.list({
         payment_intent: paymentIndentId,
       });
+      console.log("[STRIPE][handlePaymentIntent] sessions found", { count: session?.data?.length || 0 });
 
       if (!session.data.length || !session.data[0].metadata) {
+        console.log("[STRIPE][handlePaymentIntent] no session metadata, skip");
         return;
       }
 
       const { orderIds, userId, appId } = session.data[0].metadata;
 
       if (!orderIds || !userId || !appId) {
+        console.log("[STRIPE][handlePaymentIntent] missing metadata", { orderIds, userId, appId });
         return;
       }
 
       if (appId !== process.env.NEXT_PUBLIC_APP_ID) {
+        console.log("[STRIPE][handlePaymentIntent] appId mismatch", {
+          appIdFromSession: appId,
+          expectedAppId: process.env.NEXT_PUBLIC_APP_ID,
+        });
         return NextResponse.json({ received: true, message: "Invalid app ID" }, { status: 400 });
       }
 
       const orderIdsArray = orderIds.split(",");
 
       if (isPaid) {
+        console.log("[STRIPE][handlePaymentIntent] marking orders paid", { orderIdsArray });
         // Mark orders as paid
         await Promise.all(orderIdsArray.map(async (orderId) => {
           const order = await prisma.order.update({
@@ -57,6 +144,7 @@ export async function POST(request) {
             data: { isPaid: true, },
             include: { orderItems: true },
           });
+          console.log("[STRIPE][handlePaymentIntent] marked paid", { orderId, isPaid: order.isPaid });
 
           await Promise.all(order.orderItems.map(async (item) => {
             const updatedProduct = await prisma.product.updateMany({
@@ -80,12 +168,15 @@ export async function POST(request) {
           where: { id: userId },
           data: { cart: {} },
         });
+        console.log("[STRIPE][handlePaymentIntent] cart cleared", { userId });
       } else {
+        console.log("[STRIPE][handlePaymentIntent] payment canceled, deleting orders", { orderIdsArray });
         // Delete unpaid orders
         await Promise.all(orderIdsArray.map(async (orderId) => {
           await prisma.order.delete({
             where: { id: orderId },
           });
+          console.log("[STRIPE][handlePaymentIntent] deleted unpaid order", { orderId });
         }));
       }
     }
@@ -160,6 +251,9 @@ export async function POST(request) {
 
     switch (event.type) {
       case "checkout.session.completed": {
+        const session = event.data.object;
+        const paid = session?.payment_status === "paid";
+        await finalizeOrderCheckoutSession(session, paid);
         await handleMembershipCheckout(event.data.object);
         break;
       }

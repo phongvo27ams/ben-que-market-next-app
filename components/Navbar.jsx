@@ -40,12 +40,19 @@ const Navbar = () => {
           return;
         }
         const token = await getToken();
-        const [membershipRes, adminRes] = await Promise.all([
-          axios.get("/api/user/membership", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("/api/admin/is-admin", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
+        const membershipRes = await axios.get("/api/user/membership", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setMembership(membershipRes.data?.membership || null);
-        setIsAdmin(Boolean(adminRes.data?.isAdmin));
+
+        try {
+          const adminRes = await axios.get("/api/admin/is-admin", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setIsAdmin(Boolean(adminRes.data?.isAdmin));
+        } catch {
+          setIsAdmin(false);
+        }
       } catch {
         setMembership(null);
         setIsAdmin(false);
@@ -70,7 +77,7 @@ const Navbar = () => {
 
   const isPlusMember = membership?.membershipPlan === "plus";
   const isPlusYearly = membership?.membershipPeriod === "yearly";
-  const plusBadgeLabel = isPlusYearly ? "Plus Năm" : "Plus Tháng";
+  const plusBadgeLabel = isPlusYearly ? "Plus" : "Plus";
 
   const navLinks = [
     { href: "/", label: "Trang Chủ", match: (path) => path === "/" },
@@ -113,7 +120,12 @@ const Navbar = () => {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-4">
           <Link href="/" className="relative shrink-0 text-2xl font-semibold text-slate-700 sm:text-3xl lg:text-4xl">
             <span className="text-green-600">Bến Quê </span>Market<span className="text-5xl leading-0 text-green-600">.</span>
-            {mounted && isPlusMember && (
+            {mounted && isAdmin && (
+              <p className="absolute -right-12 -top-2 z-10 rounded-full bg-green-500 px-3 py-0.5 text-xs font-semibold text-white shadow-sm">
+                Admin
+              </p>
+            )}
+            {mounted && !isAdmin && isPlusMember && (
               <p className={`absolute -right-10 -top-2 z-10 rounded-full px-3 py-0.5 text-xs font-semibold text-white shadow-sm ${
                 isPlusYearly ? "bg-amber-500 ring-1 ring-amber-200" : "bg-slate-400 ring-1 ring-slate-200"
               }`}>

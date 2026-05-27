@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isPlusActiveMember } from "../../../lib/membership";
+import { getOrCreateSystemStore } from "../../../lib/systemStore";
 
 const getAvailableStock = (product) => Number(product?.inStock ?? 0);
 const SHIPPING_FEE = 50000;
@@ -63,12 +64,13 @@ export async function POST(request) {
       }
     }
 
-    const orderByStore = new Map();
+    const systemStore = await getOrCreateSystemStore();
     let orderIds = [];
     let fullAmount = 0;
-    let isShippingFeeAdded = false;
+    let subtotal = 0;
+    const normalizedItems = [];
 
-    // 1) Validate stock and group cart items by storeId
+    // 1) Validate stock and compute subtotal (B2C single-system-store)
     for (const item of items) {
       const product = await prisma.product.findUnique({ where: { id: item.id } });
       if (!product) {
@@ -82,50 +84,42 @@ export async function POST(request) {
         );
       }
 
-      const storeId = product.storeId;
-      if (!orderByStore.has(storeId)) {
-        orderByStore.set(storeId, []);
-      }
-      orderByStore.get(storeId).push({ ...item, price: product.price });
+      subtotal += item.quantity * product.price;
+      normalizedItems.push({ id: item.id, quantity: item.quantity, price: product.price });
     }
 
     await prisma.$transaction(async (tx) => {
-      for (const [storeId, sellerItems] of orderByStore.entries()) {
-        let total = sellerItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-
-        if (couponCode && coupon) {
-          total -= (coupon.discount / 100) * total;
-        }
-
-        const qualifiesPlusFreeShip = isPlusMember && total >= PLUS_FREE_SHIP_MIN_ORDER;
-        if (!qualifiesPlusFreeShip && !isShippingFeeAdded) {
-          total += SHIPPING_FEE;
-          isShippingFeeAdded = true;
-        }
-
-        fullAmount += parseFloat(total.toFixed(2));
-
-        const order = await tx.order.create({
-          data: {
-            userId,
-            storeId,
-            addressId,
-            total: parseFloat(total.toFixed(2)),
-            paymentMethod,
-            isCouponUsed: !!coupon,
-            coupon: coupon ? coupon : {},
-            orderItems: {
-              create: sellerItems.map(it => ({
-                productId: it.id,
-                quantity: it.quantity,
-                price: it.price,
-              }))
-            }
-          },
-        });
-
-        orderIds.push(order.id);
+      let total = subtotal;
+      if (couponCode && coupon) {
+        total -= (coupon.discount / 100) * total;
       }
+
+      const qualifiesPlusFreeShip = isPlusMember && total >= PLUS_FREE_SHIP_MIN_ORDER;
+      if (!qualifiesPlusFreeShip) {
+        total += SHIPPING_FEE;
+      }
+
+      fullAmount = parseFloat(total.toFixed(2));
+
+      const order = await tx.order.create({
+        data: {
+          userId,
+          storeId: systemStore.id,
+          addressId,
+          total: fullAmount,
+          paymentMethod,
+          isCouponUsed: !!coupon,
+          coupon: coupon ? coupon : {},
+          orderItems: {
+            create: normalizedItems.map((it) => ({
+              productId: it.id,
+              quantity: it.quantity,
+              price: it.price,
+            })),
+          },
+        },
+      });
+      orderIds.push(order.id);
 
       if (paymentMethod === "COD") {
         for (const item of items) {

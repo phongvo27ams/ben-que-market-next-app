@@ -14,6 +14,14 @@ export default function StoreOrders() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { getToken } = useAuth();
+  const statusLabelMap = {
+    ORDER_PLACED: "Đã đặt hàng",
+    PROCESSING: "Đang xử lý",
+    SHIPPED: "Đang giao",
+    DELIVERED: "Đã giao",
+  };
+
+  const getStatusLabel = (status) => statusLabelMap[status] || status;
 
   const fetchOrders = async () => {
     try {
@@ -129,8 +137,8 @@ export default function StoreOrders() {
       )}
 
       {isModalOpen && selectedOrder && (
-        <div onClick={closeModal} className="fixed inset-0 flex items-center justify-center bg-black/50 text-slate-700 text-sm backdrop-blur-xs z-50">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+        <div onClick={closeModal} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 text-sm text-slate-700 backdrop-blur-xs">
+          <div onClick={(e) => e.stopPropagation()} className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
             <h2 className="text-xl font-semibold text-slate-900 mb-4 text-center">
               Chi tiết đơn hàng
             </h2>
@@ -169,7 +177,7 @@ export default function StoreOrders() {
               {selectedOrder.isCouponUsed && (
                 <p><span className="text-green-700">Mã giảm giá:</span> {selectedOrder.coupon.code} (giảm {selectedOrder.coupon.discount}%)</p>
               )}
-              <p><span className="text-green-700">Trạng thái:</span> {selectedOrder.status}</p>
+              <p><span className="text-green-700">Trạng thái:</span> {getStatusLabel(selectedOrder.status)}</p>
               <p><span className="text-green-700">Ngày đặt:</span> {new Date(selectedOrder.createdAt).toLocaleString()}</p>
             </div>
 

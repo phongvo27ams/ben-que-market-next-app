@@ -167,6 +167,8 @@ model Store {
   logo                 String
   email                String
   contact              String
+  isSystem             Boolean              @default(false)
+  sellerDisabled       Boolean              @default(false)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
