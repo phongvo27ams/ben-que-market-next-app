@@ -7,6 +7,7 @@ import { isPlusActiveMember } from "../../../lib/membership";
 const getAvailableStock = (product) => Number(product?.inStock ?? 0);
 const SHIPPING_FEE = 50000;
 const STRIPE_CURRENCY = "vnd";
+const PLUS_FREE_SHIP_MIN_ORDER = Number(process.env.PLUS_FREE_SHIP_MIN_ORDER || 199000);
 
 // Place a new order for the authenticated user
 export async function POST(request) {
@@ -96,7 +97,8 @@ export async function POST(request) {
           total -= (coupon.discount / 100) * total;
         }
 
-        if (!isPlusMember && !isShippingFeeAdded) {
+        const qualifiesPlusFreeShip = isPlusMember && total >= PLUS_FREE_SHIP_MIN_ORDER;
+        if (!qualifiesPlusFreeShip && !isShippingFeeAdded) {
           total += SHIPPING_FEE;
           isShippingFeeAdded = true;
         }

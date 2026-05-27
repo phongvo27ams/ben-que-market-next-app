@@ -10,6 +10,8 @@ import CategoriesMarquee from './CategoriesMarquee';
 
 const Hero = ({ selectedCategory, onToggleCategory }) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
+  const freeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
+  const formattedFreeShipMinOrder = `${freeShipMinOrder.toLocaleString("vi-VN")}${currency}`;
   const router = useRouter();
 
   return (
@@ -24,7 +26,7 @@ const Hero = ({ selectedCategory, onToggleCategory }) => {
           <div className='relative z-10 p-5 sm:p-8 lg:p-12 xl:p-16'>
             <div className='inline-flex max-w-full items-center gap-2 rounded-full border border-white/60 bg-white/55 p-1 pr-3 text-[11px] text-emerald-900 backdrop-blur-md sm:gap-3 sm:pr-4 sm:text-sm'>
               <span className='ml-1 rounded-full bg-emerald-600 px-3 py-1 text-[10px] text-white shadow-sm sm:text-xs'>NEWS</span>
-              <span className='line-clamp-2'>Miễn phí vận chuyển cho đơn hàng từ 200.000đ</span>
+              <span className='line-clamp-2'>Miễn phí vận chuyển cho đơn hàng từ {formattedFreeShipMinOrder}</span>
               <ChevronRightIcon className='shrink-0 transition-all group-hover:ml-1' size={16} />
             </div>
 

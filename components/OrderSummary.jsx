@@ -19,6 +19,7 @@ const OrderSummary = ({ totalPrice, items }) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "$";
   const addressList = useSelector((state) => state.address.list);
   const shippingFee = 50000;
+  const plusFreeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
 
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -116,7 +117,8 @@ const OrderSummary = ({ totalPrice, items }) => {
 
   const discountAmount = coupon ? (coupon.discount / 100) * totalPrice : 0;
   const subtotalAfterDiscount = totalPrice - discountAmount;
-  const finalTotal = isPlusMember ? subtotalAfterDiscount : subtotalAfterDiscount + shippingFee;
+  const qualifiesPlusFreeShip = isPlusMember && subtotalAfterDiscount >= plusFreeShipMinOrder;
+  const finalTotal = qualifiesPlusFreeShip ? subtotalAfterDiscount : subtotalAfterDiscount + shippingFee;
 
   return (
     <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-slate-50/30 p-7 text-sm text-slate-500 lg:max-w-[340px]">
@@ -186,10 +188,15 @@ const OrderSummary = ({ totalPrice, items }) => {
 
           <div className="flex flex-col gap-1 text-right font-medium">
             <p>{formatMoney(totalPrice, currency)}</p>
-            {isPlusMember ? <p>Miễn phí</p> : <p>{formatMoney(shippingFee, currency)}</p>}
+            {qualifiesPlusFreeShip ? <p>Miễn phí</p> : <p>{formatMoney(shippingFee, currency)}</p>}
             {coupon && <p>{`-${formatMoney(discountAmount, currency)}`}</p>}
           </div>
         </div>
+        {isPlusMember && !qualifiesPlusFreeShip && (
+          <p className="mt-2 text-xs text-amber-600">
+            Plus miễn phí vận chuyển cho đơn từ {formatMoney(plusFreeShipMinOrder, currency)}
+          </p>
+        )}
 
         {!coupon ? (
           <form
