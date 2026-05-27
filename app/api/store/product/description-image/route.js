@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 
 import getImageKit from "../../../../../configs/imageKit";
-import authSeller from "../../../../../middlewares/authSeller";
+import authAdmin from "../../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../../lib/systemStore";
 
 const buildImageUrl = (imagekit, filePath) => imagekit.url({
   path: filePath,
@@ -16,11 +17,13 @@ const buildImageUrl = (imagekit, filePath) => imagekit.url({
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     const formData = await request.formData();
     const image = formData.get("image");

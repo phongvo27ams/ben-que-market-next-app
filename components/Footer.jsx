@@ -67,7 +67,6 @@ const Footer = () => {
         { text: "Trang chủ", path: "/", icon: null },
         { text: "Tất cả sản phẩm", path: "/shop", icon: null },
         { text: "Trở thành Thành viên Plus", path: "/pricing", icon: null },
-        // { text: "Tạo cửa hàng", path: "/create-store", icon: null },
       ],
     },
     {
@@ -88,36 +87,28 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="mx-6 bg-white">
+    <footer className="border-b border-slate-500/30 bg-white">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 border-b border-slate-500/30 py-10 text-slate-500 lg:grid-cols-[220px_minmax(0,0.92fr)_minmax(250px,1.08fr)_minmax(190px,0.92fr)_minmax(200px,0.92fr)] lg:items-start lg:gap-10">
+        <div className="grid gap-8 py-10 text-slate-500 lg:grid-cols-[220px_minmax(0,0.92fr)_minmax(250px,1.08fr)_minmax(190px,0.92fr)_minmax(200px,0.92fr)] lg:items-start lg:gap-10">
           <div className="flex flex-col items-center md:items-start">
             <Link href="/" className="inline-flex justify-center">
-              <Image
-                src={logo}
-                alt="Bến Quê Market"
-                className="h-auto w-40 sm:w-48"
-              />
+              <Image src={logo} alt="Bến Quê Market" className="h-auto w-40 sm:w-48" />
             </Link>
             <p className="mt-2 text-center text-2xl font-semibold text-slate-700 md:text-left">
               <span className="text-green-600">Bến Quê </span>
               Market
-              <span className="text-green-600 text-3xl leading-0">.</span>
+              <span className="text-3xl leading-0 text-green-600">.</span>
             </p>
             <div className="mt-4 flex items-center gap-3">
               {socialIcons.map((item, i) => (
-                <Link
-                  href={item.link}
-                  key={i}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 transition hover:scale-105 hover:border hover:border-slate-300"
-                >
+                <Link key={i} href={item.link} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 transition hover:scale-105 hover:border hover:border-slate-300">
                   <item.icon />
                 </Link>
               ))}
             </div>
           </div>
 
-          <div className="min-w-0 w-full text-sm leading-6">
+          <div className="w-full min-w-0 text-sm leading-6">
             <h3 className="mb-3 font-medium text-slate-700 md:mb-5">VỀ CHÚNG TÔI</h3>
             <p className="w-full max-w-none text-left text-sm leading-6 md:max-w-[320px] md:text-justify">
               Chào mừng bạn đến với Bến Quê Market. Chúng tôi là nền tảng thương mại điện tử chuyên cung cấp các đặc sản trứ danh của miền Tây Việt Nam, nơi hội tụ tinh hoa ẩm thực và giá trị văn hóa vùng sông nước.
@@ -154,7 +145,7 @@ const Footer = () => {
           ))}
         </div>
 
-        <p className="py-4 text-sm text-slate-500">
+        <p className="border-t border-slate-500/30 py-4 text-sm text-slate-500">
           &copy; 2026 Bến Quê Market.
         </p>
       </div>

@@ -2,7 +2,8 @@ import prisma from "../../../../lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
 export async function POST(request) {
   try {
@@ -13,18 +14,20 @@ export async function POST(request) {
       return NextResponse.json({ error: "Valid product ID and stock quantity are required" }, { status: 400 });
     }
 
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     const product = await prisma.product.findFirst({
       where: { id: productId, storeId },
     });
 
     if (!product) {
-      return NextResponse.json({ error: "Product not found or does not belong to your store" }, { status: 404 });
+      return NextResponse.json({ error: "Product not found in system store" }, { status: 404 });
     }
 
     await prisma.product.update({

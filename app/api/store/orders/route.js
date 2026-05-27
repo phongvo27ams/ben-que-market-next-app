@@ -1,18 +1,21 @@
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
 import prisma from "../../../../lib/prisma";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
-// Update the status of an order for the authenticated seller's store
+// Update order status for the system store (B2C admin-only)
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     const { orderId, status } = await request.json();
 
@@ -31,11 +34,13 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     const orders = await prisma.order.findMany({
       where: { storeId },

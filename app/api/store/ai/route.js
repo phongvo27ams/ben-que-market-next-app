@@ -1,7 +1,8 @@
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 import { openai } from "../../../../configs/openai";
 
 const buildFallbackSuggestion = (productName = "", category = "", origin = "") => {
@@ -90,11 +91,12 @@ export async function POST(request) {
 
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
+    await getOrCreateSystemStore();
 
     payload = await request.json();
     const { productName, category, origin } = payload;

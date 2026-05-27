@@ -1,9 +1,10 @@
-import prisma from "../../../../lib/prisma";
+﻿import prisma from "../../../../lib/prisma";
 import getImageKit from "../../../../configs/imageKit";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
 const buildImageUrl = (imagekit, filePath) => imagekit.url({
   path: filePath,
@@ -89,11 +90,12 @@ const deleteImagesByUrls = async (urls = []) => {
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
-
-    if (!storeId) {
+    const isAdmin = await authAdmin(userId);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const systemStore = await getOrCreateSystemStore();
+    const storeId = systemStore.id;
 
     // Get data from the form
     const formData = await request.formData();
@@ -161,11 +163,12 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
-
-    if (!storeId) {
+    const isAdmin = await authAdmin(userId);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const systemStore = await getOrCreateSystemStore();
+    const storeId = systemStore.id;
 
     const products = await prisma.product.findMany({
       where: { storeId },
@@ -183,11 +186,12 @@ export async function GET(request) {
 export async function PUT(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
-
-    if (!storeId) {
+    const isAdmin = await authAdmin(userId);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const systemStore = await getOrCreateSystemStore();
+    const storeId = systemStore.id;
 
     const formData = await request.formData();
     const productId = formData.get("productId");
@@ -283,11 +287,12 @@ export async function PUT(request) {
 export async function DELETE(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
-
-    if (!storeId) {
+    const isAdmin = await authAdmin(userId);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const systemStore = await getOrCreateSystemStore();
+    const storeId = systemStore.id;
 
     const { searchParams } = request.nextUrl;
     const productId = searchParams.get("productId");
@@ -324,3 +329,5 @@ export async function DELETE(request) {
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
   }
 }
+
+

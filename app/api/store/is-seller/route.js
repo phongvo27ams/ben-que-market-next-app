@@ -1,22 +1,22 @@
-import prisma from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
-// Auth seller
+// Backward-compatible endpoint for store dashboard auth in B2C mode.
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    const isSeller = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!isSeller) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
 
-    const storeInfo = await prisma.store.findUnique({ where: { userId } });
+    const storeInfo = await getOrCreateSystemStore();
 
-    return NextResponse.json({ isSeller, storeInfo });
+    return NextResponse.json({ isSeller: true, isAdmin: true, storeInfo, mode: "b2c" });
   } catch (error) {
     console.error("Error checking seller status:", error);
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });

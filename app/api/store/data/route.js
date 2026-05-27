@@ -1,20 +1,14 @@
 import prisma from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
-// Get store info and store products
+// Get system store info and products (B2C single-store mode)
 export async function GET(request) {
   try {
-    // Extract username from query parameters
-    const { searchParams } = new URL(request.url);
-    const username = searchParams.get("username").toLowerCase();
+    const systemStore = await getOrCreateSystemStore();
 
-    if (!username) {
-      return NextResponse.json({ error: "Username is required" }, { status: 400 });
-    }
-
-    // Fetch store info from external API
     const store = await prisma.store.findUnique({
-      where: { username, isActive: true },
+      where: { id: systemStore.id, isActive: true },
       include: { Product: { include: { rating: true } } },
     });
 

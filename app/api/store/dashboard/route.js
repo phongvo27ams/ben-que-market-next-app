@@ -1,12 +1,18 @@
 import prisma from "../../../../lib/prisma";
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+    }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     const orders = await prisma.order.findMany({ where: { storeId } });
     const products = await prisma.product.findMany({ where: { storeId } });

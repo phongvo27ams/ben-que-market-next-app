@@ -2,16 +2,19 @@ import prisma from "../../../../lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import authSeller from "../../../../middlewares/authSeller";
+import authAdmin from "../../../../middlewares/authAdmin";
+import { getOrCreateSystemStore } from "../../../../lib/systemStore";
 
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    const storeId = await authSeller(userId);
+    const isAdmin = await authAdmin(userId);
 
-    if (!storeId) {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const store = await getOrCreateSystemStore();
+    const storeId = store.id;
 
     let productionFacilities = await prisma.productionFacility.findMany({
       where: { storeId },
@@ -19,10 +22,6 @@ export async function GET(request) {
     });
 
     if (productionFacilities.length === 0) {
-      const store = await prisma.store.findUnique({
-        where: { id: storeId },
-      });
-
       if (store) {
         await prisma.productionFacility.create({
           data: {
