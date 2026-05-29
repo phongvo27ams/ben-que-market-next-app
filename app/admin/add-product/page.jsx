@@ -11,7 +11,6 @@ import RichTextEditor from "../../../components/RichTextEditor";
 export default function AdminAddProduct() {
   const { getToken } = useAuth();
   const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null });
-  const [productionFacilities, setProductionFacilities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [productInfo, setProductInfo] = useState({
@@ -22,7 +21,6 @@ export default function AdminAddProduct() {
     inStock: 0,
     category: "",
     origin: "",
-    productionFacilityId: "",
     certification: "",
     ocopStars: 0,
   });
@@ -30,35 +28,35 @@ export default function AdminAddProduct() {
   const onChangeHandler = (e) => setProductInfo((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   const handleImageUpload = (key, file) => setImages((prev) => ({ ...prev, [key]: file }));
 
-  const fetchProductionFacilities = async () => {
-    try {
-      const token = await getToken();
-      const { data } = await axios.get("/api/store/production-facility", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const facilities = data.productionFacilities || [];
-      setProductionFacilities(facilities);
-      setProductInfo((prev) => ({
-        ...prev,
-        productionFacilityId: prev.productionFacilityId || facilities[0]?.id || "",
-      }));
-    } catch (error) {
-      toast.error(error?.response?.data?.error || error.message);
-    }
-  };
-
   const handleGenerateDescriptionWithAI = async () => {
     if (!productInfo.name.trim() || !productInfo.category || !productInfo.origin.trim()) {
       toast.error("Hãy nhập Tên sản phẩm, Danh mục và Xuất xứ trước khi dùng AI.");
       return;
     }
+    const firstImageFile = images[1] || images[2] || images[3] || images[4];
+    if (!firstImageFile) {
+      toast.error("Vui lòng tải lên ít nhất 1 ảnh để AI phân tích.");
+      return;
+    }
     try {
       setAiLoading(true);
+      const imageDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Không thể đọc ảnh để gửi AI"));
+        reader.readAsDataURL(firstImageFile);
+      });
+
       const token = await getToken();
       const response = await toast.promise(
         axios.post(
           "/api/store/ai",
-          { productName: productInfo.name, category: productInfo.category, origin: productInfo.origin },
+          {
+            productName: productInfo.name,
+            category: productInfo.category,
+            origin: productInfo.origin,
+            imageDataUrl,
+          },
           { headers: { Authorization: `Bearer ${token}` } }
         ),
         {
@@ -95,7 +93,6 @@ export default function AdminAddProduct() {
         inStock: productInfo.inStock,
         category: productInfo.category,
         origin: productInfo.origin,
-        productionFacilityId: productInfo.productionFacilityId,
         certification: productInfo.certification,
         ocopStars: productInfo.ocopStars,
       }).forEach(([k, v]) => formData.append(k, v));
@@ -111,10 +108,6 @@ export default function AdminAddProduct() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchProductionFacilities();
-  }, []);
 
   return (
     <form onSubmit={(e) => toast.promise(onSubmitHandler(e), { loading: "Đang thêm sản phẩm..." })} className="mb-28 w-full text-slate-600">
@@ -155,7 +148,6 @@ export default function AdminAddProduct() {
       </div>
 
       <label className="my-6 flex flex-col gap-2">Xuất xứ<input type="text" name="origin" onChange={onChangeHandler} value={productInfo.origin} className="w-full rounded border border-slate-200 p-2 px-4 outline-none" required /></label>
-      <label className="my-6 flex flex-col gap-2">Cơ sở sản xuất<select name="productionFacilityId" onChange={onChangeHandler} value={productInfo.productionFacilityId} className="w-full rounded border border-slate-200 p-2 px-4 outline-none" required><option value="">Chọn cơ sở sản xuất</option>{productionFacilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
       <label className="my-6 flex flex-col gap-2">Số sao OCOP: <span className="font-medium text-slate-800">{productInfo.ocopStars}</span><input type="range" name="ocopStars" min="0" max="5" step="1" value={productInfo.ocopStars} onChange={onChangeHandler} className="w-full accent-emerald-600" /></label>
       <label className="my-6 flex flex-col gap-2">Giấy chứng nhận<textarea name="certification" onChange={onChangeHandler} value={productInfo.certification} rows={3} className="w-full rounded border border-slate-200 p-2 px-4 outline-none resize-none" required /></label>
       <label className="my-6 flex flex-col gap-2">Danh mục sản phẩm<select onChange={(e) => setProductInfo({ ...productInfo, category: e.target.value })} value={productInfo.category} className="w-full rounded border border-slate-200 p-2 px-4 outline-none" required><option value="">Chọn danh mục</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>

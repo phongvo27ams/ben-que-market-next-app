@@ -17,15 +17,20 @@ const buildFallbackSuggestion = (productName = "", category = "", origin = "") =
   };
 };
 
-async function main(productName, category, origin) {
+async function main(productName, category, origin, imageDataUrl) {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const modelName = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   const messages = [
     {
       role: "system",
       content: `
-        You are a Vietnamese e-commerce copywriter.
-        Write a short but compelling marketing storytelling article in Vietnamese.
+        Bạn là copywriter tiếng Việt chuyên viết mô tả sản phẩm đặc sản vùng miền cho cửa hàng.
+
+        Nhiệm vụ:
+        - Dựa trên TÊN SẢN PHẨM, DANH MỤC, XUẤT XỨ và ẢNH sản phẩm.
+        - Suy luận đây có thể là đặc sản vùng miền nào của Việt Nam (nếu không chắc, nêu theo hướng "gợi nhớ" hoặc "mang nét", không khẳng định tuyệt đối).
+        - Viết mô tả theo phong cách storytelling, giàu hình ảnh, cảm xúc, tự nhiên, có tính marketing.
 
         Response ONLY with raw JSON (no code block, no markdown, no explanation). The JSON must strictly follow this schema:
         {
@@ -37,22 +42,41 @@ async function main(productName, category, origin) {
         - Return valid HTML only.
         - Include exactly 4 standout headings and 4 paragraphs.
         - Use this pattern: <h2>Heading 1</h2><p>Paragraph 1</p> repeated 4 times.
-        - Focus on origin, crafting process, flavor, and emotional appeal.
-        - Keep the tone vivid, natural, persuasive, and marketing-friendly.
+        - Nội dung cần có:
+          1) Bối cảnh vùng miền/gốc gác sản phẩm
+          2) Cách làm/chế biến/chọn nguyên liệu
+          3) Hương vị và trải nghiệm khi dùng
+          4) Giá trị cảm xúc + lời gợi mở mua hàng
+        - Tổng độ dài tương đương một bài mô tả storytelling tầm trung.
+        - Giọng văn: mộc mạc, tinh tế, chân thật, truyền cảm.
+        - Không dùng markdown, không dùng code block.
+        - Không thêm mục lục, không đánh số heading.
+        - Không chèn emoji hoặc ký tự lạ.
+        - Giữ nguyên tên sản phẩm trong nội dung.
+        - Không bịa thông tin quá cụ thể nếu không có dữ liệu; ưu tiên ngôn ngữ an toàn kiểu "gợi nhớ", "mang hơi thở", "đậm chất".
       `,
     },
     {
       role: "user",
-      content: `Tên sản phẩm: "${productName}".
+      content: [
+        {
+          type: "text",
+          text: `Tên sản phẩm: "${productName}".
 Danh mục: "${category}".
 Xuất xứ: "${origin}".
 
-Bạn hãy viết một bài Marketing ngắn như một storytelling giới thiệu về nguồn gốc, cách làm ra món, hương vị thật cuốn hút, gồm có 4 đoạn văn và 4 heading nổi bật cho sản phẩm.
+Bạn hãy phân tích ảnh sản phẩm đính kèm và viết mô tả sản phẩm theo phong cách storytelling kể chuyện về món đặc sản vùng miền.
+Yêu cầu bắt buộc: có đúng 4 heading và 4 đoạn văn, nội dung có chiều sâu cảm xúc và tính marketing, độ dài tương đương ví dụ mô tả sản phẩm "Thốt nốt đóng hộp".
 Giữ nguyên tên sản phẩm trong trường "name".`,
+        },
+        {
+          type: "image_url",
+          image_url: { url: imageDataUrl },
+        },
+      ],
     },
   ];
 
-  const modelName = process.env.OPENAI_MODEL || "gpt-4o-mini";
   let response;
   let attempts = 0;
   const maxAttempts = 3;
@@ -76,14 +100,9 @@ Giữ nguyên tên sản phẩm trong trường "name".`,
     }
   }
 
-  const raw = response.choices[0].message.content;
+  const raw = response.choices?.[0]?.message?.content || "";
   const cleaned = raw.replace(/```json|```/g, "").trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    throw new Error("Failed to parse JSON response from AI");
-  }
+  return JSON.parse(cleaned);
 }
 
 export async function POST(request) {
@@ -93,23 +112,22 @@ export async function POST(request) {
     const { userId } = getAuth(request);
     const isAdmin = await authAdmin(userId);
 
-    if (!isAdmin) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-    }
+    if (!isAdmin) return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     await getOrCreateSystemStore();
 
     payload = await request.json();
-    const { productName, category, origin } = payload;
+    const { productName, category, origin, imageDataUrl } = payload;
 
-    if (!productName?.trim()) {
-      return NextResponse.json({ error: "Missing product name" }, { status: 400 });
+    if (!productName?.trim()) return NextResponse.json({ error: "Missing product name" }, { status: 400 });
+    if (!category?.trim() || !origin?.trim()) return NextResponse.json({ error: "Missing category or origin" }, { status: 400 });
+    if (!imageDataUrl || !String(imageDataUrl).startsWith("data:image/")) {
+      return NextResponse.json({ error: "Missing image data for AI analysis" }, { status: 400 });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Missing OPENAI_API_KEY on server" }, { status: 400 });
     }
 
-    if (!category?.trim() || !origin?.trim()) {
-      return NextResponse.json({ error: "Missing category or origin" }, { status: 400 });
-    }
-
-    const result = await main(productName.trim(), category.trim(), origin.trim());
+    const result = await main(productName.trim(), category.trim(), origin.trim(), imageDataUrl);
     return NextResponse.json({ ...result }, { status: 200 });
   } catch (error) {
     console.log("[AI_PRODUCT_ERROR]", error);
@@ -121,11 +139,7 @@ export async function POST(request) {
         {
           ...fallbackResult,
           error: "AI đang quá tải hoặc đã hết quota. Hệ thống đã tạo gợi ý dự phòng.",
-          providerError:
-            error?.message ||
-            error?.response?.data?.error?.message ||
-            error?.response?.data?.error ||
-            "Unknown AI provider error",
+          providerError: error?.message || "Unknown AI provider error",
         },
         { status: 200 }
       );

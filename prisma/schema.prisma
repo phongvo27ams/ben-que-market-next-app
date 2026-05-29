@@ -42,12 +42,12 @@ model Product {
   ocopStars            Int      @default(0)
   inStock              Int      @default(0)
   storeId              String
-  productionFacilityId String
+  productionFacilityId String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   store               Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  productionFacility  ProductionFacility @relation(fields: [productionFacilityId], references: [id], onDelete: Restrict)
+  productionFacility  ProductionFacility? @relation(fields: [productionFacilityId], references: [id], onDelete: SetNull)
   orderItems          OrderItem[]
   rating              Rating[]
 }

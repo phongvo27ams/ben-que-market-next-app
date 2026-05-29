@@ -112,7 +112,7 @@ export async function POST(request) {
 
     const inStock = Number(formData.get("inStock") || 0);
 
-    if (!name || !description || !mrp || !price || !category || !origin || !productionFacilityId || !certification || images.length === 0) {
+    if (!name || !description || !mrp || !price || !category || !origin || !certification || images.length === 0) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
@@ -124,12 +124,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "OCOP stars must be between 0 and 5" }, { status: 400 });
     }
 
-    const productionFacility = await prisma.productionFacility.findFirst({
-      where: { id: productionFacilityId, storeId },
-    });
-
-    if (!productionFacility) {
-      return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
+    if (productionFacilityId) {
+      const productionFacility = await prisma.productionFacility.findFirst({
+        where: { id: productionFacilityId, storeId },
+      });
+      if (!productionFacility) {
+        return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
+      }
     }
 
     // Upload images to ImageKit
@@ -144,7 +145,7 @@ export async function POST(request) {
         price,
         category,
         origin,
-        productionFacilityId,
+        productionFacilityId: productionFacilityId || null,
         certification,
         ocopStars,
         inStock,
@@ -221,7 +222,6 @@ export async function PUT(request) {
       ocopStars > 5 ||
       !category ||
       !origin ||
-      !productionFacilityId ||
       !certification
     ) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
@@ -235,12 +235,13 @@ export async function PUT(request) {
       return NextResponse.json({ error: "Product not found or does not belong to your store" }, { status: 404 });
     }
 
-    const productionFacility = await prisma.productionFacility.findFirst({
-      where: { id: productionFacilityId, storeId },
-    });
-
-    if (!productionFacility) {
-      return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
+    if (productionFacilityId) {
+      const productionFacility = await prisma.productionFacility.findFirst({
+        where: { id: productionFacilityId, storeId },
+      });
+      if (!productionFacility) {
+        return NextResponse.json({ error: "Production facility not found" }, { status: 404 });
+      }
     }
 
     const uploadedImageUrls = await uploadImages(newImages);
@@ -265,7 +266,7 @@ export async function PUT(request) {
         price: Number(price),
         category,
         origin,
-        productionFacilityId,
+        productionFacilityId: productionFacilityId || null,
         certification,
         ocopStars,
         inStock,
