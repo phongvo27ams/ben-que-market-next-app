@@ -87,8 +87,12 @@ export async function POST(request) {
         );
       }
 
-      subtotal += item.quantity * product.price;
-      normalizedItems.push({ id: item.id, quantity: item.quantity, price: product.price });
+      normalizedItems.push({
+        id: item.id,
+        quantity: item.quantity,
+        originalPrice: product.price,
+        price: product.price,
+      });
     }
 
     const comboSetting = await prisma.comboSetting.findUnique({
@@ -111,16 +115,16 @@ export async function POST(request) {
       ? rawComboIds.filter((id) => orderItemIdSet.has(id)).slice(0, maxComboItems)
       : [];
 
-    let comboDiscountAmount = 0;
     for (const comboId of eligibleComboIds) {
       const comboItem = normalizedItems.find((item) => item.id === comboId);
       if (!comboItem) continue;
-      comboDiscountAmount += comboItem.price * (comboDiscountPercent / 100);
+      comboItem.price = parseFloat((comboItem.originalPrice * (1 - comboDiscountPercent / 100)).toFixed(2));
     }
 
+    subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     await prisma.$transaction(async (tx) => {
-      let total = subtotal - comboDiscountAmount;
-      if (total < 0) total = 0;
+      let total = subtotal;
       if (couponCode && coupon) {
         total -= (coupon.discount / 100) * total;
       }

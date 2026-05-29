@@ -18,7 +18,7 @@ const DEFAULT_COMBO_DISCOUNT_PERCENT = 10;
 const DEFAULT_MAX_COMBO_ITEMS = 1;
 
 export default function Cart() {
-  const { cartItems, comboProductIds = [] } = useSelector((state) => state.cart);
+  const { cartItems, comboProductIds = [], comboLinks = {} } = useSelector((state) => state.cart);
   const products = useSelector((state) => state.product.list);
   const dispatch = useDispatch();
 
@@ -77,7 +77,13 @@ export default function Cart() {
     }
 
     dispatch(addToCart({ productId: product.id }));
-    dispatch(setComboProduct({ productId: product.id }));
+    const baseProduct = cartArray.find((item) => !comboProductIds.includes(item.id));
+    if (!baseProduct) {
+      toast.error("Cần có sản phẩm gốc trong giỏ để thêm combo");
+      return;
+    }
+
+    dispatch(setComboProduct({ productId: product.id, baseProductId: baseProduct.id }));
     toast.success(`Đã thêm sản phẩm combo với ưu đãi ${comboDiscountPercent}%`);
   };
 
@@ -146,6 +152,14 @@ export default function Cart() {
 
   const selectedComboIds = comboProductIds.filter((id) => Boolean(cartItems[id]));
   const selectedComboCount = selectedComboIds.length;
+  useEffect(() => {
+    console.log("[CART_UI] combo state", {
+      comboProductIds,
+      comboLinks,
+      selectedComboIds,
+      cartItems,
+    });
+  }, [comboProductIds, comboLinks, selectedComboIds, cartItems]);
 
   return cartArray.length > 0 ? (
     <div className="mx-6 min-h-screen text-slate-800">
@@ -174,14 +188,33 @@ export default function Cart() {
                         <p className="max-sm:text-sm transition hover:text-green-600">{item.name}</p>
                         <p className="text-xs text-slate-500">{item.category}</p>
                         <p className="text-xs text-slate-400">{item.origin || "Chưa cập nhật xuất xứ"}</p>
-                        <p>{formatMoney(item.price)}</p>
+                        {comboProductIds.includes(item.id) ? (
+                          <div className="mt-1">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Giá Combo</p>
+                            <p className="font-bold text-emerald-600">
+                              {formatMoney(Math.round(item.price * (1 - comboDiscountPercent / 100)))}
+                            </p>
+                            <p className="text-xs text-slate-400 line-through">{formatMoney(item.price)}</p>
+                            {comboLinks[item.id] && (
+                              <p className="text-[11px] text-emerald-700">Gắn với sản phẩm gốc trong giỏ</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p>{formatMoney(item.price)}</p>
+                        )}
                       </div>
                     </Link>
                   </td>
                   <td className="text-center">
                     <Counter productId={item.id} maxStock={item.inStock} />
                   </td>
-                  <td className="whitespace-nowrap text-center">{formatMoney(item.price * item.quantity)}</td>
+                  <td className="whitespace-nowrap text-center">
+                    {formatMoney(
+                      (comboProductIds.includes(item.id)
+                        ? Math.round(item.price * (1 - comboDiscountPercent / 100))
+                        : item.price) * item.quantity
+                    )}
+                  </td>
                   <td className="text-center max-md:hidden">
                     <button
                       onClick={() => handleDeleteItemFromCart(item.id)}

@@ -164,7 +164,21 @@ export default function StoreOrders() {
                     <div className="flex-1">
                       <p className="text-slate-800">{item.product?.name}</p>
                       <p>Số lượng: {item.quantity}</p>
-                      <p>Giá: {item.price?.toLocaleString("vi-VN")} đ</p>
+                      {Number(item.price) < Number(item.product?.price) ? (
+                        <div>
+                          <p className="font-semibold text-emerald-600">
+                            Giá đã mua: {item.price?.toLocaleString("vi-VN")} đ
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Giá niêm yết: <span className="line-through">{item.product?.price?.toLocaleString("vi-VN")} đ</span>
+                          </p>
+                          <p className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                            Giá ưu đãi
+                          </p>
+                        </div>
+                      ) : (
+                        <p>Giá: {item.price?.toLocaleString("vi-VN")} đ</p>
+                      )}
                     </div>
                   </div>
                 ))}

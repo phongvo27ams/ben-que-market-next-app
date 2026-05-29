@@ -93,7 +93,22 @@ const OrderItem = ({ order }) => {
 
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="min-h-12 line-clamp-2 text-base font-medium leading-6 text-slate-700">{item.product.name}</p>
-                    <p className="text-slate-500">{formatMoney(item.price, currency)} | Số lượng: {item.quantity}</p>
+                    {item.price < item.product.price ? (
+                      <div className="text-slate-500">
+                        <p className="flex items-center gap-2">
+                          <span className="font-semibold text-emerald-600">Giá đã mua: {formatMoney(item.price, currency)}</span>
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                            Giá ưu đãi
+                          </span>
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Giá niêm yết: <span className="line-through">{formatMoney(item.product.price, currency)}</span>
+                        </p>
+                        <p>Số lượng: {item.quantity}</p>
+                      </div>
+                    ) : (
+                      <p className="text-slate-500">{formatMoney(item.price, currency)} | Số lượng: {item.quantity}</p>
+                    )}
                     <p className="mb-1 text-xs text-slate-400">Ngày đặt: {orderDate}</p>
                     <div>
                       {existingRating ? (

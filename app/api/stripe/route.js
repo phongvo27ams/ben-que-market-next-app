@@ -4,6 +4,11 @@ import Stripe from "stripe";
 import { MEMBERSHIP_ACTIVE, PLUS_PLAN } from "../../../lib/membership";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const isAppIdMismatch = (appIdFromEvent) => {
+  const expectedAppId = process.env.NEXT_PUBLIC_APP_ID;
+  if (!appIdFromEvent || !expectedAppId) return false;
+  return appIdFromEvent !== expectedAppId;
+};
 
 const resolveSubscriptionPeriod = (subscription) => {
   const item = subscription?.items?.data?.[0];
@@ -41,7 +46,7 @@ const finalizeOrderCheckoutSession = async (checkoutSessionObject, isPaid) => {
     console.log("[STRIPE][finalizeOrderCheckoutSession] missing metadata", { orderIds, userId, appId });
     return;
   }
-  if (appId !== process.env.NEXT_PUBLIC_APP_ID) {
+  if (isAppIdMismatch(appId)) {
     console.log("[STRIPE][finalizeOrderCheckoutSession] appId mismatch", {
       appIdFromSession: appId,
       expectedAppId: process.env.NEXT_PUBLIC_APP_ID,
@@ -125,7 +130,7 @@ export async function POST(request) {
         return;
       }
 
-      if (appId !== process.env.NEXT_PUBLIC_APP_ID) {
+      if (isAppIdMismatch(appId)) {
         console.log("[STRIPE][handlePaymentIntent] appId mismatch", {
           appIdFromSession: appId,
           expectedAppId: process.env.NEXT_PUBLIC_APP_ID,

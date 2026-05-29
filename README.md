@@ -67,6 +67,46 @@ Start the application in development mode. Next.js will compile the project and 
 npm run dev
 ```
 
+## Stripe Webhook (Local Development)
+
+To ensure Stripe orders are marked as paid correctly (`isPaid = true`) in local development, you need to forward Stripe webhook events to your local API:
+
+```bash
+stripe listen --forward-to localhost:4000/api/stripe
+```
+
+### What does this command do?
+
+- It forwards Stripe events (for example `checkout.session.completed`, `payment_intent.succeeded`) to your local machine.
+- Your webhook handler at `app/api/stripe/route.js` receives those events and updates order/payment data in the database.
+- If you do not run this command, a payment may succeed on Stripe but Admin can still show `Paid: No`.
+
+### Correct usage
+
+1. Start the app locally:
+```bash
+npm run dev
+```
+
+2. Open another terminal and run webhook forwarding:
+```bash
+stripe listen --forward-to localhost:4000/api/stripe
+```
+
+3. Copy the webhook signing secret (`whsec_...`) shown by Stripe CLI and set it in `.env`:
+```env
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+4. Restart your dev server after updating `.env`.
+
+5. Create and pay a Stripe order for testing.
+
+6. Verify:
+- Stripe CLI terminal shows forwarded webhook events.
+- Next.js terminal shows webhook events received.
+- Admin order detail page shows `Paid: Yes`.
+
 ## Backup and Restore Database
 
 ### Backup current database

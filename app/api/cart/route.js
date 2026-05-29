@@ -12,12 +12,14 @@ const normalizeCartPayload = (cart) => {
     return {
       items: cart.items || {},
       comboProductIds,
+      comboLinks: cart.comboLinks || {},
     };
   }
 
   return {
     items: cart || {},
     comboProductIds: [],
+    comboLinks: {},
   };
 };
 
@@ -26,7 +28,8 @@ export async function POST(request) {
   try {
     const { userId } = getAuth(request);
     const { cart } = await request.json();
-    const { items, comboProductIds } = normalizeCartPayload(cart);
+    const { items, comboProductIds, comboLinks } = normalizeCartPayload(cart);
+    console.log("[API_CART][POST] input", { userId, items, comboProductIds, comboLinks });
 
     const productIds = Object.keys(items || {});
     const products = productIds.length > 0
@@ -49,6 +52,17 @@ export async function POST(request) {
     }
 
     const validComboProductIds = comboProductIds.filter((id) => Boolean(sanitizedCart[id]));
+    const validComboLinks = {};
+    for (const comboId of validComboProductIds) {
+      const baseId = comboLinks?.[comboId];
+      if (baseId && sanitizedCart[baseId]) validComboLinks[comboId] = baseId;
+    }
+    console.log("[API_CART][POST] sanitized", {
+      userId,
+      sanitizedCart,
+      validComboProductIds,
+      validComboLinks,
+    });
 
     await prisma.user.update({
       where: { id: userId },
@@ -56,6 +70,7 @@ export async function POST(request) {
         cart: {
           items: sanitizedCart,
           comboProductIds: validComboProductIds,
+          comboLinks: validComboLinks,
           comboProductId: validComboProductIds[0] || null,
         },
       },
@@ -65,6 +80,7 @@ export async function POST(request) {
       message: "Cart updated successfully",
       cart: sanitizedCart,
       comboProductIds: validComboProductIds,
+      comboLinks: validComboLinks,
       comboProductId: validComboProductIds[0] || null,
     }, { status: 200 });
   } catch (error) {
@@ -81,7 +97,8 @@ export async function GET(request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    const { items, comboProductIds } = normalizeCartPayload(user?.cart || {});
+    const { items, comboProductIds, comboLinks } = normalizeCartPayload(user?.cart || {});
+    console.log("[API_CART][GET] raw", { userId, rawCart: user?.cart || {} });
     const productIds = Object.keys(items);
     const products = productIds.length > 0
       ? await prisma.product.findMany({
@@ -102,9 +119,21 @@ export async function GET(request) {
     }
 
     const validComboProductIds = comboProductIds.filter((id) => Boolean(sanitizedCart[id]));
+    const validComboLinks = {};
+    for (const comboId of validComboProductIds) {
+      const baseId = comboLinks?.[comboId];
+      if (baseId && sanitizedCart[baseId]) validComboLinks[comboId] = baseId;
+    }
+    console.log("[API_CART][GET] sanitized", {
+      userId,
+      sanitizedCart,
+      validComboProductIds,
+      validComboLinks,
+    });
     const nextCartData = {
       items: sanitizedCart,
       comboProductIds: validComboProductIds,
+      comboLinks: validComboLinks,
       comboProductId: validComboProductIds[0] || null,
     };
 
@@ -118,6 +147,7 @@ export async function GET(request) {
     return NextResponse.json({
       cart: sanitizedCart,
       comboProductIds: nextCartData.comboProductIds,
+      comboLinks: nextCartData.comboLinks,
       comboProductId: nextCartData.comboProductId,
     }, { status: 200 });
   } catch (error) {
