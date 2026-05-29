@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 4000",
+    "prebuild": "npm run encoding:check",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:backup": "powershell -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1",
     "db:backup:now": "powershell -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1 -Label baseline",
-    "db:restore:latest": "powershell -ExecutionPolicy Bypass -File ./scripts/restore-db.ps1"
+    "db:restore:latest": "powershell -ExecutionPolicy Bypass -File ./scripts/restore-db.ps1",
+    "encoding:check": "node ./scripts/encoding-guard.mjs",
+    "encoding:fix": "node ./scripts/encoding-guard.mjs --fix"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.3",

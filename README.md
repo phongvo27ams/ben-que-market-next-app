@@ -38,6 +38,27 @@ npm install
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ```
 
+## UTF-8 Encoding Guard (Recommended)
+
+Project is configured to avoid Vietnamese font/encoding issues:
+
+- `.editorconfig`: `charset = utf-8`, `end_of_line = crlf`
+- `.vscode/settings.json`: `files.encoding = utf8`, `files.autoGuessEncoding = false`
+- `.gitattributes`: enforce UTF-8 for source/content text files
+- `prebuild` hook: runs encoding check before build
+
+Run manual check:
+
+```bash
+npm run encoding:check
+```
+
+Auto-fix common mojibake patterns and normalize line endings:
+
+```bash
+npm run encoding:fix
+```
+
 ## Run the Development Server
 
 Start the application in development mode. Next.js will compile the project and automatically open a local server:
@@ -104,4 +125,16 @@ npm run start
 
 ```
 npm run lint
+```
+
+- Checks suspicious UTF-8/mojibake patterns:
+
+```bash
+npm run encoding:check
+```
+
+- Attempts to fix common encoding issues:
+
+```bash
+npm run encoding:fix
 ```
