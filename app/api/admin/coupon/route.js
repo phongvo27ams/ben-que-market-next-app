@@ -19,6 +19,21 @@ export async function POST(request) {
 
     const { coupon } = await request.json();
     coupon.code = coupon.code.toUpperCase();
+    coupon.maxUses = Number(coupon.maxUses || 0);
+    coupon.usedCount = 0;
+    // Treat selected expiration date as end-of-day (23:59:59.999) to avoid expiring mid-day.
+    if (coupon.expiresAt) {
+      const raw = String(coupon.expiresAt);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        coupon.expiresAt = new Date(`${raw}T23:59:59.999`);
+      } else {
+        const date = new Date(raw);
+        if (!Number.isNaN(date.getTime())) {
+          date.setHours(23, 59, 59, 999);
+          coupon.expiresAt = date;
+        }
+      }
+    }
 
     await prisma.coupon.create({
       data: coupon,

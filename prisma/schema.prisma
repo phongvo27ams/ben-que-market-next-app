@@ -148,6 +148,8 @@ model Coupon {
   code        String   @id
   description String
   discount    Float
+  maxUses     Int      @default(0)
+  usedCount   Int      @default(0)
   forNewUser  Boolean
   forMember   Boolean  @default(false)
   isPublic    Boolean

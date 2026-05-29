@@ -35,7 +35,7 @@ export async function POST(request) {
       });
 
       if (!coupon) {
-        return NextResponse.json({ error: "Invalid or expired coupon code" }, { status: 404 });
+        return NextResponse.json({ error: "Mã giảm giá không hợp lệ hoặc đã hết hạn" }, { status: 404 });
       }
     }
 
@@ -46,7 +46,7 @@ export async function POST(request) {
       });
 
       if (userOrders.length > 0) {
-        return NextResponse.json({ error: "Coupon valid only for new users" }, { status: 400 });
+        return NextResponse.json({ error: "Mã giảm giá chỉ áp dụng cho người dùng mới" }, { status: 400 });
       }
     }
 
@@ -63,7 +63,7 @@ export async function POST(request) {
 
     if (couponCode && coupon.forMember) {
       if (!isPlusMember) {
-        return NextResponse.json({ error: "Coupon valid only for Plus members" }, { status: 400 });
+        return NextResponse.json({ error: "Mã giảm giá chỉ áp dụng cho thành viên Plus" }, { status: 400 });
       }
     }
 
@@ -155,6 +155,15 @@ export async function POST(request) {
         },
       });
       orderIds.push(order.id);
+
+      if (coupon) {
+        await tx.coupon.update({
+          where: { code: coupon.code },
+          data: {
+            usedCount: { increment: 1 },
+          },
+        });
+      }
 
       if (paymentMethod === "COD") {
         for (const item of items) {

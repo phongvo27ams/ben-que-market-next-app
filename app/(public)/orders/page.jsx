@@ -5,10 +5,12 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
 
 import Loading from "../../../components/Loading";
 import PageTitle from "../../../components/PageTitle";
 import OrderItem from "../../../components/OrderItem";
+import { replaceCartFromOrder } from "../../../lib/features/cart/cartSlice";
 
 export default function Orders() {
   const { getToken } = useAuth();
@@ -16,6 +18,19 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const dispatch = useDispatch();
+
+  const handleBuyAgain = (order) => {
+    const nextCartItems = {};
+    for (const item of order.orderItems || []) {
+      if (!item?.product?.id) continue;
+      nextCartItems[item.product.id] = (nextCartItems[item.product.id] || 0) + Number(item.quantity || 0);
+    }
+
+    dispatch(replaceCartFromOrder({ items: nextCartItems }));
+    toast.success("Đã thêm lại sản phẩm của đơn hàng vào giỏ");
+    router.push("/cart");
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -62,11 +77,12 @@ export default function Orders() {
                 <th className="text-center">Tổng giá tiền</th>
                 <th className="text-left">Địa chỉ</th>
                 <th className="text-left">Trạng thái</th>
+                <th className="text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
-                <OrderItem order={order} key={order.id} />
+                <OrderItem order={order} key={order.id} onBuyAgain={handleBuyAgain} />
               ))}
             </tbody>
           </table>

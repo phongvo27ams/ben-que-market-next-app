@@ -14,6 +14,7 @@ export default function AdminCoupons() {
     code: "",
     description: "",
     discount: "",
+    maxUses: "",
     forNewUser: false,
     forMember: false,
     isPublic: false,
@@ -60,6 +61,7 @@ export default function AdminCoupons() {
       const payload = {
         ...newCoupon,
         discount: Number(newCoupon.discount),
+        maxUses: Number(newCoupon.maxUses || 0),
         expiresAt: new Date(newCoupon.expiresAt),
       };
 
@@ -122,6 +124,15 @@ export default function AdminCoupons() {
           <input type="text" placeholder="Mã giảm giá" className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="code" value={newCoupon.code} onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })} required />
           <input type="number" placeholder="Mức giảm (%)" min={1} max={100} className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="discount" value={newCoupon.discount} onChange={(e) => setNewCoupon({ ...newCoupon, discount: e.target.value })} required />
         </div>
+        <input
+          type="number"
+          placeholder="Số lượng phát hành (0 = không giới hạn)"
+          min={0}
+          className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
+          name="maxUses"
+          value={newCoupon.maxUses}
+          onChange={(e) => setNewCoupon({ ...newCoupon, maxUses: e.target.value })}
+        />
         <input type="text" placeholder="Mô tả mã giảm giá" className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="description" value={newCoupon.description} onChange={(e) => setNewCoupon({ ...newCoupon, description: e.target.value })} required />
         <label>
           <p className="mt-3">Ngày hết hạn</p>
@@ -149,6 +160,7 @@ export default function AdminCoupons() {
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Mã</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Mô tả</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Giảm giá</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-600">Số lượng</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Hết hạn</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Người dùng mới</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-600">Thành viên Plus</th>
@@ -161,6 +173,9 @@ export default function AdminCoupons() {
                   <td className="px-4 py-3 font-medium text-slate-800">{coupon.code}</td>
                   <td className="px-4 py-3 text-slate-800">{coupon.description}</td>
                   <td className="px-4 py-3 text-slate-800">{coupon.discount}%</td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"}
+                  </td>
                   <td className="px-4 py-3 text-slate-800">{format(coupon.expiresAt, "yyyy-MM-dd")}</td>
                   <td className="px-4 py-3 text-slate-800">{coupon.forNewUser ? "Có" : "Không"}</td>
                   <td className="px-4 py-3 text-slate-800">{coupon.forMember ? "Có" : "Không"}</td>

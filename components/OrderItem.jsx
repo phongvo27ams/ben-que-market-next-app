@@ -64,7 +64,7 @@ const OrderStatusBadge = ({ status }) => {
   );
 };
 
-const OrderItem = ({ order }) => {
+const OrderItem = ({ order, onBuyAgain }) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
   const [ratingModal, setRatingModal] = useState(null);
   const orderDate = formatOrderDate(order.createdAt);
@@ -110,6 +110,11 @@ const OrderItem = ({ order }) => {
                       <p className="text-slate-500">{formatMoney(item.price, currency)} | Số lượng: {item.quantity}</p>
                     )}
                     <p className="mb-1 text-xs text-slate-400">Ngày đặt: {orderDate}</p>
+                    {order.isCouponUsed && order.coupon?.code && (
+                      <p className="mb-1 text-xs text-emerald-700">
+                        Mã giảm giá: <span className="font-semibold">{String(order.coupon.code).toUpperCase()}</span>
+                      </p>
+                    )}
                     <div>
                       {existingRating ? (
                         <button
@@ -154,6 +159,15 @@ const OrderItem = ({ order }) => {
         <td className="text-left max-md:hidden">
           <OrderStatusBadge status={order.status} />
         </td>
+        <td className="text-center max-md:hidden">
+          <button
+            type="button"
+            onClick={() => onBuyAgain?.(order)}
+            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700"
+          >
+            Mua lại đơn hàng
+          </button>
+        </td>
       </tr>
 
       <tr className="md:hidden">
@@ -166,12 +180,19 @@ const OrderItem = ({ order }) => {
               <p className="text-xs text-slate-400">Ngày đặt: {orderDate}</p>
               <OrderStatusBadge status={order.status} />
             </div>
+            <button
+              type="button"
+              onClick={() => onBuyAgain?.(order)}
+              className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700"
+            >
+              Mua lại đơn hàng
+            </button>
           </div>
         </td>
       </tr>
 
       <tr>
-        <td colSpan={4}>
+        <td colSpan={5}>
           <div className="mx-auto w-6/7 border-b border-slate-300" />
         </td>
       </tr>
