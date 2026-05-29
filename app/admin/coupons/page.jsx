@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import { DeleteIcon, PencilIcon, SaveIcon, XIcon } from "lucide-react";
@@ -10,6 +10,7 @@ import axios from "axios";
 export default function AdminCoupons() {
   const { getToken } = useAuth();
   const [coupons, setCoupons] = useState([]);
+  const [ordersAnalytics, setOrdersAnalytics] = useState([]);
   const [newCoupon, setNewCoupon] = useState({
     code: "",
     description: "",
@@ -59,6 +60,7 @@ export default function AdminCoupons() {
       toast.error(error?.response?.data?.error || error.message);
     }
   };
+
   const fetchShippingSetting = async () => {
     try {
       const token = await getToken();
@@ -71,6 +73,18 @@ export default function AdminCoupons() {
           plusFreeShipMinOrder: data.setting.plusFreeShipMinOrder,
         });
       }
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
+
+  const fetchOrdersAnalytics = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get("/api/store/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOrdersAnalytics(data.orders || []);
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message);
     }
@@ -150,6 +164,7 @@ export default function AdminCoupons() {
       toast.error(error?.response?.data?.error || error.message);
     }
   };
+
   const startEditCoupon = (coupon) => {
     setEditingCode(coupon.code);
     setEditCoupon({
@@ -163,10 +178,12 @@ export default function AdminCoupons() {
       isPublic: coupon.isPublic,
     });
   };
+
   const cancelEditCoupon = () => {
     setEditingCode("");
     setEditCoupon(null);
   };
+
   const saveEditCoupon = async () => {
     if (!editCoupon?.code) return;
     try {
@@ -196,6 +213,7 @@ export default function AdminCoupons() {
       toast.error(error?.response?.data?.error || error.message);
     }
   };
+
   const handleUpdateShippingSetting = async (e) => {
     e.preventDefault();
     try {
@@ -221,25 +239,135 @@ export default function AdminCoupons() {
     fetchCoupons();
     fetchComboSetting();
     fetchShippingSetting();
+    fetchOrdersAnalytics();
   }, []);
+
+  const analytics = useMemo(() => {
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysLater = new Date(now.getTime() + 7 * dayMs);
+
+    const availableCoupons = coupons.filter((c) => {
+      const notExpired = new Date(c.expiresAt) > now;
+      const hasQuota = Number(c.maxUses || 0) === 0 || Number(c.usedCount || 0) < Number(c.maxUses || 0);
+      return notExpired && hasQuota;
+    });
+
+    const mostUsedCoupon = [...coupons].sort((a, b) => Number(b.usedCount || 0) - Number(a.usedCount || 0))[0];
+    const fastestDepletionCoupon = [...coupons]
+      .filter((c) => Number(c.maxUses || 0) > 0)
+      .sort((a, b) => (Number(b.usedCount || 0) / Number(b.maxUses || 1)) - (Number(a.usedCount || 0) / Number(a.maxUses || 1)))[0];
+
+    const expiringSoonCoupons = coupons.filter((c) => {
+      const exp = new Date(c.expiresAt);
+      return exp > now && exp <= sevenDaysLater;
+    });
+    const outOfQuotaCoupons = coupons.filter((c) => Number(c.maxUses || 0) > 0 && Number(c.usedCount || 0) >= Number(c.maxUses || 0));
+
+    const ordersWithCoupon = ordersAnalytics.filter((o) => Boolean(o.isCouponUsed));
+    const ordersWithoutCoupon = ordersAnalytics.filter((o) => !o.isCouponUsed);
+    const revenueWithCoupon = ordersWithCoupon.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    const revenueWithoutCoupon = ordersWithoutCoupon.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    const aovWithCoupon = ordersWithCoupon.length ? revenueWithCoupon / ordersWithCoupon.length : 0;
+    const aovWithoutCoupon = ordersWithoutCoupon.length ? revenueWithoutCoupon / ordersWithoutCoupon.length : 0;
+
+    const comboDiscountPercent = Number(comboSetting.comboDiscountPercent || 0);
+    const comboRevenueProxy = ordersAnalytics.reduce((sum, order) => {
+      const comboItems = (order.orderItems || []).filter((item) => Number(item.price) < Number(item.product?.price || 0));
+      return sum + comboItems.reduce((itemSum, item) => itemSum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    }, 0);
+
+    const freeShipNormalThreshold = Number(shippingSetting.freeShipMinOrder || 0);
+    const freeShipPlusThreshold = Number(shippingSetting.plusFreeShipMinOrder || 0);
+    const plusOrders = ordersAnalytics.filter((o) => o.user?.membershipPlan === "plus" && o.user?.membershipStatus === "active");
+    const regularOrders = ordersAnalytics.filter((o) => !(o.user?.membershipPlan === "plus" && o.user?.membershipStatus === "active"));
+    const regularEligible = regularOrders.filter((o) => Number(o.total || 0) >= freeShipNormalThreshold).length;
+    const plusEligible = plusOrders.filter((o) => Number(o.total || 0) >= freeShipPlusThreshold).length;
+    const regularConversionProxy = regularOrders.length ? (regularEligible / regularOrders.length) * 100 : 0;
+    const plusConversionProxy = plusOrders.length ? (plusEligible / plusOrders.length) * 100 : 0;
+    const regularAov = regularOrders.length ? regularOrders.reduce((s, o) => s + Number(o.total || 0), 0) / regularOrders.length : 0;
+    const plusAov = plusOrders.length ? plusOrders.reduce((s, o) => s + Number(o.total || 0), 0) / plusOrders.length : 0;
+
+    return {
+      availableCouponsCount: availableCoupons.length,
+      mostUsedCoupon,
+      fastestDepletionCoupon,
+      expiringSoonCoupons,
+      outOfQuotaCoupons,
+      ordersWithCouponCount: ordersWithCoupon.length,
+      revenueWithCoupon,
+      aovWithCoupon,
+      aovWithoutCoupon,
+      comboDiscountPercent,
+      comboRevenueProxy,
+      regularConversionProxy,
+      plusConversionProxy,
+      regularAov,
+      plusAov,
+    };
+  }, [coupons, comboSetting, shippingSetting, ordersAnalytics]);
 
   return (
     <div className="mb-40 text-slate-500">
-      <form onSubmit={(e) => toast.promise(handleAddCoupon(e), { loading: "Đang thêm mã giảm giá..." })} className="max-w-sm text-sm">
+      <div className="w-full">
+        <h2 className="text-2xl">Coupon, Combo, Freeship <span className="font-medium text-slate-800">hiệu quả</span></h2>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Mã còn hiệu lực</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-800">{analytics.availableCouponsCount}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Mã dùng nhiều nhất</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">{analytics.mostUsedCoupon?.code || "—"}</p>
+            <p className="text-xs text-slate-500">Lượt dùng: {analytics.mostUsedCoupon?.usedCount || 0}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Mã hết lượt nhanh</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">{analytics.fastestDepletionCoupon?.code || "—"}</p>
+            <p className="text-xs text-slate-500">{analytics.fastestDepletionCoupon ? `${Math.round((Number(analytics.fastestDepletionCoupon.usedCount || 0) / Number(analytics.fastestDepletionCoupon.maxUses || 1)) * 100)}% quota` : "Không giới hạn"}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Doanh thu từ đơn có coupon</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-700">{Math.round(analytics.revenueWithCoupon).toLocaleString("vi-VN")} đ</p>
+            <p className="text-xs text-slate-500">{analytics.ordersWithCouponCount} đơn</p>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-medium text-slate-700">Doanh thu từ combo (proxy)</p>
+            <p className="mt-1 text-xl font-semibold text-slate-800">{Math.round(analytics.comboRevenueProxy).toLocaleString("vi-VN")} đ</p>
+            <p className="text-xs text-slate-500">Mức giảm combo hiện tại: {analytics.comboDiscountPercent}%</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-medium text-slate-700">Tác động freeship đến conversion (proxy)</p>
+            <p className="mt-1 text-sm text-slate-700">Khách thường đạt ngưỡng: <span className="font-semibold">{analytics.regularConversionProxy.toFixed(1)}%</span></p>
+            <p className="text-sm text-slate-700">Khách Plus đạt ngưỡng: <span className="font-semibold">{analytics.plusConversionProxy.toFixed(1)}%</span></p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-medium text-slate-700">Tác động freeship đến AOV</p>
+            <p className="mt-1 text-sm text-slate-700">AOV thường: <span className="font-semibold">{Math.round(analytics.regularAov).toLocaleString("vi-VN")} đ</span></p>
+            <p className="text-sm text-slate-700">AOV Plus: <span className="font-semibold">{Math.round(analytics.plusAov).toLocaleString("vi-VN")} đ</span></p>
+            <p className="text-xs text-slate-500">AOV đơn có coupon: {Math.round(analytics.aovWithCoupon).toLocaleString("vi-VN")} đ</p>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="font-medium text-amber-800">Cảnh báo coupon sắp hết hạn / hết lượt</p>
+          <div className="mt-2 text-sm text-amber-900">
+            <p>Sắp hết hạn (7 ngày): {analytics.expiringSoonCoupons.length ? analytics.expiringSoonCoupons.map((c) => c.code).join(", ") : "Không có"}</p>
+            <p>Hết lượt: {analytics.outOfQuotaCoupons.length ? analytics.outOfQuotaCoupons.map((c) => c.code).join(", ") : "Không có"}</p>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={(e) => toast.promise(handleAddCoupon(e), { loading: "Đang thêm mã giảm giá..." })} className="mt-14 max-w-sm text-sm">
         <h2 className="text-2xl">Thêm <span className="font-medium text-slate-800">Mã giảm giá</span></h2>
         <div className="mt-2 flex gap-2 max-sm:flex-col">
           <input type="text" placeholder="Mã giảm giá" className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="code" value={newCoupon.code} onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })} required />
           <input type="number" placeholder="Mức giảm (%)" min={1} max={100} className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="discount" value={newCoupon.discount} onChange={(e) => setNewCoupon({ ...newCoupon, discount: e.target.value })} required />
         </div>
-        <input
-          type="number"
-          placeholder="Số lượng phát hành (0 = không giới hạn)"
-          min={0}
-          className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
-          name="maxUses"
-          value={newCoupon.maxUses}
-          onChange={(e) => setNewCoupon({ ...newCoupon, maxUses: e.target.value })}
-        />
+        <input type="number" placeholder="Số lượng phát hành (0 = không giới hạn)" min={0} className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="maxUses" value={newCoupon.maxUses} onChange={(e) => setNewCoupon({ ...newCoupon, maxUses: e.target.value })} />
         <input type="text" placeholder="Mô tả mã giảm giá" className="mt-2 w-full rounded-md border border-slate-200 p-2 outline-slate-400" name="description" value={newCoupon.description} onChange={(e) => setNewCoupon({ ...newCoupon, description: e.target.value })} required />
         <label>
           <p className="mt-3">Ngày hết hạn</p>
@@ -247,45 +375,17 @@ export default function AdminCoupons() {
         </label>
         <div className="mt-5">
           <label className="mt-3 flex gap-2">
-            <input
-              type="checkbox"
-              checked={newCoupon.forNewUser}
-              onChange={(e) =>
-                setNewCoupon({
-                  ...newCoupon,
-                  forNewUser: e.target.checked,
-                  forMember: e.target.checked ? false : newCoupon.forMember,
-                })
-              }
-            />
+            <input type="checkbox" checked={newCoupon.forNewUser} onChange={(e) => setNewCoupon({ ...newCoupon, forNewUser: e.target.checked, forMember: e.target.checked ? false : newCoupon.forMember })} />
             <span>Dành cho người dùng mới</span>
           </label>
           <label className="mt-3 flex gap-2">
-            <input
-              type="checkbox"
-              checked={newCoupon.forMember}
-              onChange={(e) =>
-                setNewCoupon({
-                  ...newCoupon,
-                  forMember: e.target.checked,
-                  forNewUser: e.target.checked ? false : newCoupon.forNewUser,
-                })
-              }
-            />
+            <input type="checkbox" checked={newCoupon.forMember} onChange={(e) => setNewCoupon({ ...newCoupon, forMember: e.target.checked, forNewUser: e.target.checked ? false : newCoupon.forNewUser })} />
             <span>Dành cho thành viên Plus</span>
           </label>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGenerateCouponCode}
-            className="rounded bg-slate-200 p-2 px-6 text-slate-700 transition hover:bg-slate-300 active:scale-95"
-          >
-            Tạo mã
-          </button>
-          <button className="rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
-            Thêm mã
-          </button>
+          <button type="button" onClick={handleGenerateCouponCode} className="rounded bg-slate-200 p-2 px-6 text-slate-700 transition hover:bg-slate-300 active:scale-95">Tạo mã</button>
+          <button className="rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">Thêm mã</button>
         </div>
       </form>
 
@@ -311,88 +411,33 @@ export default function AdminCoupons() {
                   <td className="px-4 py-3 font-medium text-slate-800">{coupon.code}</td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="text"
-                        className="w-full rounded border border-slate-200 p-1.5"
-                        value={editCoupon?.description || ""}
-                        onChange={(e) => setEditCoupon({ ...editCoupon, description: e.target.value })}
-                      />
-                    ) : (
-                      coupon.description
-                    )}
+                      <input type="text" className="w-full rounded border border-slate-200 p-1.5" value={editCoupon?.description || ""} onChange={(e) => setEditCoupon({ ...editCoupon, description: e.target.value })} />
+                    ) : coupon.description}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        className="w-24 rounded border border-slate-200 p-1.5"
-                        value={editCoupon?.discount ?? ""}
-                        onChange={(e) => setEditCoupon({ ...editCoupon, discount: e.target.value })}
-                      />
-                    ) : (
-                      `${coupon.discount}%`
-                    )}
+                      <input type="number" min={1} max={100} className="w-24 rounded border border-slate-200 p-1.5" value={editCoupon?.discount ?? ""} onChange={(e) => setEditCoupon({ ...editCoupon, discount: e.target.value })} />
+                    ) : `${coupon.discount}%`}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-24 rounded border border-slate-200 p-1.5"
-                        value={editCoupon?.maxUses ?? ""}
-                        onChange={(e) => setEditCoupon({ ...editCoupon, maxUses: e.target.value })}
-                      />
-                    ) : (
-                      coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"
-                    )}
+                      <input type="number" min={0} className="w-24 rounded border border-slate-200 p-1.5" value={editCoupon?.maxUses ?? ""} onChange={(e) => setEditCoupon({ ...editCoupon, maxUses: e.target.value })} />
+                    ) : coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="date"
-                        className="rounded border border-slate-200 p-1.5"
-                        value={editCoupon?.expiresAt || ""}
-                        onChange={(e) => setEditCoupon({ ...editCoupon, expiresAt: e.target.value })}
-                      />
-                    ) : (
-                      format(coupon.expiresAt, "yyyy-MM-dd")
-                    )}
+                      <input type="date" className="rounded border border-slate-200 p-1.5" value={editCoupon?.expiresAt || ""} onChange={(e) => setEditCoupon({ ...editCoupon, expiresAt: e.target.value })} />
+                    ) : format(coupon.expiresAt, "yyyy-MM-dd")}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="checkbox"
-                        checked={Boolean(editCoupon?.forNewUser)}
-                        onChange={(e) =>
-                          setEditCoupon({
-                            ...editCoupon,
-                            forNewUser: e.target.checked,
-                            forMember: e.target.checked ? false : editCoupon?.forMember,
-                          })
-                        }
-                      />
-                    ) : (
-                      coupon.forNewUser ? "Có" : "Không"
-                    )}
+                      <input type="checkbox" checked={Boolean(editCoupon?.forNewUser)} onChange={(e) => setEditCoupon({ ...editCoupon, forNewUser: e.target.checked, forMember: e.target.checked ? false : editCoupon?.forMember })} />
+                    ) : coupon.forNewUser ? "Có" : "Không"}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
-                      <input
-                        type="checkbox"
-                        checked={Boolean(editCoupon?.forMember)}
-                        onChange={(e) =>
-                          setEditCoupon({
-                            ...editCoupon,
-                            forMember: e.target.checked,
-                            forNewUser: e.target.checked ? false : editCoupon?.forNewUser,
-                          })
-                        }
-                      />
-                    ) : (
-                      coupon.forMember ? "Có" : "Không"
-                    )}
+                      <input type="checkbox" checked={Boolean(editCoupon?.forMember)} onChange={(e) => setEditCoupon({ ...editCoupon, forMember: e.target.checked, forNewUser: e.target.checked ? false : editCoupon?.forNewUser })} />
+                    ) : coupon.forMember ? "Có" : "Không"}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     <div className="flex items-center gap-2">
@@ -419,29 +464,13 @@ export default function AdminCoupons() {
         <form onSubmit={(e) => toast.promise(handleUpdateShippingSetting(e), { loading: "Đang cập nhật miễn phí vận chuyển..." })}>
           <label className="mt-4 block">
             <p>Đơn tối thiểu miễn phí vận chuyển (thành viên thường)</p>
-            <input
-              type="number"
-              min={0}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
-              value={shippingSetting.freeShipMinOrder}
-              onChange={(e) => setShippingSetting({ ...shippingSetting, freeShipMinOrder: e.target.value })}
-              required
-            />
+            <input type="number" min={0} className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400" value={shippingSetting.freeShipMinOrder} onChange={(e) => setShippingSetting({ ...shippingSetting, freeShipMinOrder: e.target.value })} required />
           </label>
           <label className="mt-3 block">
             <p>Đơn tối thiểu miễn phí vận chuyển (thành viên Plus)</p>
-            <input
-              type="number"
-              min={0}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
-              value={shippingSetting.plusFreeShipMinOrder}
-              onChange={(e) => setShippingSetting({ ...shippingSetting, plusFreeShipMinOrder: e.target.value })}
-              required
-            />
+            <input type="number" min={0} className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400" value={shippingSetting.plusFreeShipMinOrder} onChange={(e) => setShippingSetting({ ...shippingSetting, plusFreeShipMinOrder: e.target.value })} required />
           </label>
-          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
-            Lưu cấu hình miễn phí vận chuyển
-          </button>
+          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">Lưu cấu hình miễn phí vận chuyển</button>
         </form>
       </div>
 
@@ -450,31 +479,13 @@ export default function AdminCoupons() {
         <form onSubmit={(e) => toast.promise(handleUpdateComboSetting(e), { loading: "Đang cập nhật cấu hình combo..." })}>
           <label className="mt-4 block">
             <p>Số sản phẩm combo tối đa</p>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
-              value={comboSetting.maxComboItems}
-              onChange={(e) => setComboSetting({ ...comboSetting, maxComboItems: e.target.value })}
-              required
-            />
+            <input type="number" min={1} max={10} className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400" value={comboSetting.maxComboItems} onChange={(e) => setComboSetting({ ...comboSetting, maxComboItems: e.target.value })} required />
           </label>
           <label className="mt-3 block">
             <p>Mức giảm combo (%)</p>
-            <input
-              type="number"
-              min={1}
-              max={90}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
-              value={comboSetting.comboDiscountPercent}
-              onChange={(e) => setComboSetting({ ...comboSetting, comboDiscountPercent: e.target.value })}
-              required
-            />
+            <input type="number" min={1} max={90} className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400" value={comboSetting.comboDiscountPercent} onChange={(e) => setComboSetting({ ...comboSetting, comboDiscountPercent: e.target.value })} required />
           </label>
-          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
-            Lưu cấu hình combo
-          </button>
+          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">Lưu cấu hình combo</button>
         </form>
       </div>
     </div>

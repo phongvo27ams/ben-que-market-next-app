@@ -21,6 +21,7 @@ export default function StoreManageProducts() {
   const [products, setProducts] = useState([])
   const [editingProductId, setEditingProductId] = useState(null)
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" })
+  const [searchKeyword, setSearchKeyword] = useState("")
   const [editForm, setEditForm] = useState({
     name: "",
     description: "",
@@ -50,9 +51,19 @@ export default function StoreManageProducts() {
     return sortConfig.direction === "asc" ? "↑" : "↓"
   }
 
+  const filteredProducts = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase()
+    if (!keyword) return products
+    return products.filter((product) => {
+      const name = (product.name || "").toLowerCase()
+      const origin = (product.origin || "").toLowerCase()
+      return name.includes(keyword) || origin.includes(keyword)
+    })
+  }, [products, searchKeyword])
+
   const sortedProducts = useMemo(() => {
     const direction = sortConfig.direction === "asc" ? 1 : -1
-    return [...products].sort((a, b) => {
+    return [...filteredProducts].sort((a, b) => {
       switch (sortConfig.key) {
         case "name":
           return (a.name || "").localeCompare(b.name || "", "vi", { sensitivity: "base" }) * direction
@@ -74,7 +85,7 @@ export default function StoreManageProducts() {
           return (new Date(a.createdAt) - new Date(b.createdAt)) * direction
       }
     })
-  }, [products, sortConfig])
+  }, [filteredProducts, sortConfig])
 
   const fetchProducts = async () => {
     try {
@@ -249,6 +260,15 @@ export default function StoreManageProducts() {
       <h1 className="mb-5 text-2xl text-slate-500">
         Quản lý <span className="font-medium text-slate-800">Sản phẩm</span>
       </h1>
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          placeholder="Tìm nhanh theo tên sản phẩm hoặc xuất xứ..."
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        />
+      </div>
       <div className="w-full overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 lg:overflow-visible">
         <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <thead className="bg-slate-50 uppercase tracking-wider text-gray-700">
