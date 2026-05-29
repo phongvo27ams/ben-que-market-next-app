@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
-import { DeleteIcon } from "lucide-react";
+import { DeleteIcon, PencilIcon, SaveIcon, XIcon } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import axios from "axios";
 
@@ -24,6 +24,12 @@ export default function AdminCoupons() {
     maxComboItems: 1,
     comboDiscountPercent: 10,
   });
+  const [shippingSetting, setShippingSetting] = useState({
+    freeShipMinOrder: 200000,
+    plusFreeShipMinOrder: 199000,
+  });
+  const [editingCode, setEditingCode] = useState("");
+  const [editCoupon, setEditCoupon] = useState(null);
 
   const fetchCoupons = async () => {
     try {
@@ -53,6 +59,22 @@ export default function AdminCoupons() {
       toast.error(error?.response?.data?.error || error.message);
     }
   };
+  const fetchShippingSetting = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get("/api/admin/shipping-setting", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data?.setting) {
+        setShippingSetting({
+          freeShipMinOrder: data.setting.freeShipMinOrder,
+          plusFreeShipMinOrder: data.setting.plusFreeShipMinOrder,
+        });
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
 
   const handleAddCoupon = async (e) => {
     e.preventDefault();
@@ -73,6 +95,24 @@ export default function AdminCoupons() {
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message);
     }
+  };
+
+  const handleGenerateCouponCode = () => {
+    const discount = Number(newCoupon.discount);
+    if (!discount || discount <= 0) {
+      toast.error("Vui lòng nhập Mức giảm (%) trước khi tạo mã");
+      return;
+    }
+
+    let memberType = "GEN";
+    if (newCoupon.forMember) memberType = "PLUS";
+    else if (newCoupon.forNewUser) memberType = "NEW";
+
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const randomPart = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const generatedCode = `${memberType}-${discount}-${randomPart}`;
+    setNewCoupon({ ...newCoupon, code: generatedCode });
+    toast.success("Đã tạo mã giảm giá tự động");
   };
 
   const handleUpdateComboSetting = async (e) => {
@@ -110,10 +150,77 @@ export default function AdminCoupons() {
       toast.error(error?.response?.data?.error || error.message);
     }
   };
+  const startEditCoupon = (coupon) => {
+    setEditingCode(coupon.code);
+    setEditCoupon({
+      code: coupon.code,
+      description: coupon.description,
+      discount: coupon.discount,
+      maxUses: coupon.maxUses,
+      expiresAt: format(coupon.expiresAt, "yyyy-MM-dd"),
+      forNewUser: coupon.forNewUser,
+      forMember: coupon.forMember,
+      isPublic: coupon.isPublic,
+    });
+  };
+  const cancelEditCoupon = () => {
+    setEditingCode("");
+    setEditCoupon(null);
+  };
+  const saveEditCoupon = async () => {
+    if (!editCoupon?.code) return;
+    try {
+      const token = await getToken();
+      await axios.put(
+        "/api/admin/coupon",
+        {
+          code: editCoupon.code,
+          coupon: {
+            description: editCoupon.description,
+            discount: Number(editCoupon.discount),
+            maxUses: Number(editCoupon.maxUses || 0),
+            expiresAt: editCoupon.expiresAt,
+            forNewUser: editCoupon.forNewUser,
+            forMember: editCoupon.forMember,
+            isPublic: editCoupon.isPublic,
+          },
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success("Đã cập nhật mã giảm giá");
+      cancelEditCoupon();
+      await fetchCoupons();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
+  const handleUpdateShippingSetting = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await getToken();
+      const payload = {
+        freeShipMinOrder: Number(shippingSetting.freeShipMinOrder),
+        plusFreeShipMinOrder: Number(shippingSetting.plusFreeShipMinOrder),
+      };
+      const { data } = await axios.put("/api/admin/shipping-setting", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success(data.message || "Đã cập nhật cấu hình miễn phí vận chuyển");
+      setShippingSetting({
+        freeShipMinOrder: data.setting.freeShipMinOrder,
+        plusFreeShipMinOrder: data.setting.plusFreeShipMinOrder,
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    }
+  };
 
   useEffect(() => {
     fetchCoupons();
     fetchComboSetting();
+    fetchShippingSetting();
   }, []);
 
   return (
@@ -140,15 +247,46 @@ export default function AdminCoupons() {
         </label>
         <div className="mt-5">
           <label className="mt-3 flex gap-2">
-            <input type="checkbox" checked={newCoupon.forNewUser} onChange={(e) => setNewCoupon({ ...newCoupon, forNewUser: e.target.checked })} />
+            <input
+              type="checkbox"
+              checked={newCoupon.forNewUser}
+              onChange={(e) =>
+                setNewCoupon({
+                  ...newCoupon,
+                  forNewUser: e.target.checked,
+                  forMember: e.target.checked ? false : newCoupon.forMember,
+                })
+              }
+            />
             <span>Dành cho người dùng mới</span>
           </label>
           <label className="mt-3 flex gap-2">
-            <input type="checkbox" checked={newCoupon.forMember} onChange={(e) => setNewCoupon({ ...newCoupon, forMember: e.target.checked })} />
+            <input
+              type="checkbox"
+              checked={newCoupon.forMember}
+              onChange={(e) =>
+                setNewCoupon({
+                  ...newCoupon,
+                  forMember: e.target.checked,
+                  forNewUser: e.target.checked ? false : newCoupon.forNewUser,
+                })
+              }
+            />
             <span>Dành cho thành viên Plus</span>
           </label>
         </div>
-        <button className="mt-4 rounded bg-slate-700 p-2 px-10 text-white transition active:scale-95">Thêm mã</button>
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleGenerateCouponCode}
+            className="rounded bg-slate-200 p-2 px-6 text-slate-700 transition hover:bg-slate-300 active:scale-95"
+          >
+            Tạo mã
+          </button>
+          <button className="rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
+            Thêm mã
+          </button>
+        </div>
       </form>
 
       <div className="mt-14 w-full">
@@ -171,22 +309,140 @@ export default function AdminCoupons() {
               {coupons.map((coupon) => (
                 <tr key={coupon.code} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{coupon.code}</td>
-                  <td className="px-4 py-3 text-slate-800">{coupon.description}</td>
-                  <td className="px-4 py-3 text-slate-800">{coupon.discount}%</td>
                   <td className="px-4 py-3 text-slate-800">
-                    {coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"}
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="text"
+                        className="w-full rounded border border-slate-200 p-1.5"
+                        value={editCoupon?.description || ""}
+                        onChange={(e) => setEditCoupon({ ...editCoupon, description: e.target.value })}
+                      />
+                    ) : (
+                      coupon.description
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-slate-800">{format(coupon.expiresAt, "yyyy-MM-dd")}</td>
-                  <td className="px-4 py-3 text-slate-800">{coupon.forNewUser ? "Có" : "Không"}</td>
-                  <td className="px-4 py-3 text-slate-800">{coupon.forMember ? "Có" : "Không"}</td>
                   <td className="px-4 py-3 text-slate-800">
-                    <DeleteIcon onClick={() => toast.promise(deleteCoupon(coupon.code), { loading: "Đang xóa mã..." })} className="h-5 w-5 cursor-pointer text-red-500 hover:text-red-800" />
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        className="w-24 rounded border border-slate-200 p-1.5"
+                        value={editCoupon?.discount ?? ""}
+                        onChange={(e) => setEditCoupon({ ...editCoupon, discount: e.target.value })}
+                      />
+                    ) : (
+                      `${coupon.discount}%`
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-24 rounded border border-slate-200 p-1.5"
+                        value={editCoupon?.maxUses ?? ""}
+                        onChange={(e) => setEditCoupon({ ...editCoupon, maxUses: e.target.value })}
+                      />
+                    ) : (
+                      coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="date"
+                        className="rounded border border-slate-200 p-1.5"
+                        value={editCoupon?.expiresAt || ""}
+                        onChange={(e) => setEditCoupon({ ...editCoupon, expiresAt: e.target.value })}
+                      />
+                    ) : (
+                      format(coupon.expiresAt, "yyyy-MM-dd")
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editCoupon?.forNewUser)}
+                        onChange={(e) =>
+                          setEditCoupon({
+                            ...editCoupon,
+                            forNewUser: e.target.checked,
+                            forMember: e.target.checked ? false : editCoupon?.forMember,
+                          })
+                        }
+                      />
+                    ) : (
+                      coupon.forNewUser ? "Có" : "Không"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {editingCode === coupon.code ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editCoupon?.forMember)}
+                        onChange={(e) =>
+                          setEditCoupon({
+                            ...editCoupon,
+                            forMember: e.target.checked,
+                            forNewUser: e.target.checked ? false : editCoupon?.forNewUser,
+                          })
+                        }
+                      />
+                    ) : (
+                      coupon.forMember ? "Có" : "Không"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-800">
+                    <div className="flex items-center gap-2">
+                      {editingCode === coupon.code ? (
+                        <>
+                          <SaveIcon onClick={() => toast.promise(saveEditCoupon(), { loading: "Đang lưu..." })} className="h-5 w-5 cursor-pointer text-emerald-600 hover:text-emerald-800" />
+                          <XIcon onClick={cancelEditCoupon} className="h-5 w-5 cursor-pointer text-slate-500 hover:text-slate-700" />
+                        </>
+                      ) : (
+                        <PencilIcon onClick={() => startEditCoupon(coupon)} className="h-5 w-5 cursor-pointer text-blue-500 hover:text-blue-700" />
+                      )}
+                      <DeleteIcon onClick={() => toast.promise(deleteCoupon(coupon.code), { loading: "Đang xóa mã..." })} className="h-5 w-5 cursor-pointer text-red-500 hover:text-red-800" />
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="mt-14 max-w-sm text-sm">
+        <h2 className="text-2xl">Quản lý <span className="font-medium text-slate-800">Miễn phí vận chuyển</span></h2>
+        <form onSubmit={(e) => toast.promise(handleUpdateShippingSetting(e), { loading: "Đang cập nhật miễn phí vận chuyển..." })}>
+          <label className="mt-4 block">
+            <p>Đơn tối thiểu miễn phí vận chuyển (thành viên thường)</p>
+            <input
+              type="number"
+              min={0}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
+              value={shippingSetting.freeShipMinOrder}
+              onChange={(e) => setShippingSetting({ ...shippingSetting, freeShipMinOrder: e.target.value })}
+              required
+            />
+          </label>
+          <label className="mt-3 block">
+            <p>Đơn tối thiểu miễn phí vận chuyển (thành viên Plus)</p>
+            <input
+              type="number"
+              min={0}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 outline-slate-400"
+              value={shippingSetting.plusFreeShipMinOrder}
+              onChange={(e) => setShippingSetting({ ...shippingSetting, plusFreeShipMinOrder: e.target.value })}
+              required
+            />
+          </label>
+          <button className="mt-4 rounded bg-emerald-600 p-2 px-10 text-white transition hover:bg-emerald-700 active:scale-95">
+            Lưu cấu hình miễn phí vận chuyển
+          </button>
+        </form>
       </div>
 
       <div className="mt-14 max-w-sm text-sm">

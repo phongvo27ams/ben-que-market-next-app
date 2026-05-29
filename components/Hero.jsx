@@ -1,18 +1,69 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ChevronRightIcon } from 'lucide-react';
+import { useAuth, useUser } from '@clerk/nextjs';
 
 import { assets } from '../assets/assets';
 import CategoriesMarquee from './CategoriesMarquee';
 
 const Hero = ({ selectedCategory, onToggleCategory }) => {
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
-  const freeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
-  const formattedFreeShipMinOrder = `${freeShipMinOrder.toLocaleString("vi-VN")}${currency}`;
+  const [freeShipMinOrder, setFreeShipMinOrder] = useState(Number(process.env.NEXT_PUBLIC_FREE_SHIP_MIN_ORDER || 200000));
+  const [plusFreeShipMinOrder, setPlusFreeShipMinOrder] = useState(Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000));
+  const [isPlusMember, setIsPlusMember] = useState(false);
+  const effectiveFreeShipMinOrder = isPlusMember ? plusFreeShipMinOrder : freeShipMinOrder;
+  const formattedFreeShipMinOrder = `${effectiveFreeShipMinOrder.toLocaleString("vi-VN")}${currency}`;
   const router = useRouter();
+  const { user } = useUser();
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const fetchShippingSetting = async () => {
+      try {
+        const response = await fetch("/api/shipping-setting", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const threshold = Number(data?.setting?.freeShipMinOrder);
+        const plusThreshold = Number(data?.setting?.plusFreeShipMinOrder);
+        if (!Number.isNaN(threshold) && threshold >= 0) setFreeShipMinOrder(threshold);
+        if (!Number.isNaN(plusThreshold) && plusThreshold >= 0) setPlusFreeShipMinOrder(plusThreshold);
+      } catch {
+        setFreeShipMinOrder(Number(process.env.NEXT_PUBLIC_FREE_SHIP_MIN_ORDER || 200000));
+        setPlusFreeShipMinOrder(Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000));
+      }
+    };
+
+    fetchShippingSetting();
+  }, []);
+
+  useEffect(() => {
+    const fetchMembership = async () => {
+      try {
+        if (!user) {
+          setIsPlusMember(false);
+          return;
+        }
+        const token = await getToken();
+        const response = await fetch("/api/user/membership", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          setIsPlusMember(false);
+          return;
+        }
+        const data = await response.json();
+        setIsPlusMember(Boolean(data?.isPlus));
+      } catch {
+        setIsPlusMember(false);
+      }
+    };
+
+    fetchMembership();
+  }, [user, getToken]);
 
   return (
     <div className='mx-4 sm:mx-6'>

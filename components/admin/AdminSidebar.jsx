@@ -15,7 +15,7 @@ const AdminSidebar = () => {
     { name: 'Thêm sản phẩm', href: '/admin/add-product', icon: PackagePlusIcon },
     { name: 'Quản lý sản phẩm', href: '/admin/manage-product', icon: PackageSearchIcon },
     { name: 'Quản lý đơn hàng', href: '/admin/orders', icon: ScrollTextIcon },
-    { name: 'Mã giảm giá', href: '/admin/coupons', icon: TicketPercentIcon },
+    { name: 'Quản lý giảm giá', href: '/admin/coupons', icon: TicketPercentIcon },
   ];
 
   return user && (

@@ -164,6 +164,13 @@ model ComboSetting {
   updatedAt          DateTime @updatedAt
 }
 
+model ShippingSetting {
+  id                    Int      @id @default(1)
+  freeShipMinOrder      Int      @default(200000)
+  plusFreeShipMinOrder  Int      @default(199000)
+  updatedAt             DateTime @updatedAt
+}
+
 model Store {
   id                   String               @id @default(cuid())
   userId               String               @unique

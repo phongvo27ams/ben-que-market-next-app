@@ -59,14 +59,28 @@ export async function POST(request) {
     }
 
     if (coupon.forNewUser) {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          membershipPlan: true,
+          membershipStatus: true,
+        },
+      });
+      const hasPlusPlan = isPlusActiveMember(currentUser);
       const userOrders = await prisma.order.findMany({
         where: { userId },
       });
-      console.log("[COUPON][POST] forNewUser check", { userId, orderCount: userOrders.length });
+      console.log("[COUPON][POST] forNewUser check", {
+        userId,
+        orderCount: userOrders.length,
+        membershipPlan: currentUser?.membershipPlan,
+        membershipStatus: currentUser?.membershipStatus,
+        hasPlusPlan,
+      });
 
-      if (userOrders.length > 0) {
-        console.log("[COUPON][POST] reject: not new user");
-        return NextResponse.json({ error: "Mã giảm giá chỉ áp dụng cho người dùng mới" }, { status: 400 });
+      if (hasPlusPlan || userOrders.length > 0) {
+        console.log("[COUPON][POST] reject: not new member");
+        return NextResponse.json({ error: "Mã giảm giá chỉ áp dụng cho thành viên mới (chưa có đơn và chưa là Plus)" }, { status: 400 });
       }
     }
 

@@ -9,6 +9,7 @@ const getAvailableStock = (product) => Number(product?.inStock ?? 0);
 const SHIPPING_FEE = 50000;
 const STRIPE_CURRENCY = "vnd";
 const PLUS_FREE_SHIP_MIN_ORDER = Number(process.env.PLUS_FREE_SHIP_MIN_ORDER || 199000);
+const FREE_SHIP_MIN_ORDER = Number(process.env.FREE_SHIP_MIN_ORDER || 200000);
 const DEFAULT_COMBO_DISCOUNT_PERCENT = 10;
 const DEFAULT_MAX_COMBO_ITEMS = 1;
 
@@ -104,6 +105,15 @@ export async function POST(request) {
     });
     const maxComboItems = comboSetting?.maxComboItems || DEFAULT_MAX_COMBO_ITEMS;
     const comboDiscountPercent = comboSetting?.comboDiscountPercent || DEFAULT_COMBO_DISCOUNT_PERCENT;
+    const shippingSetting = await prisma.shippingSetting.findUnique({
+      where: { id: 1 },
+      select: {
+        freeShipMinOrder: true,
+        plusFreeShipMinOrder: true,
+      },
+    });
+    const freeShipMinOrder = shippingSetting?.freeShipMinOrder ?? FREE_SHIP_MIN_ORDER;
+    const plusFreeShipMinOrder = shippingSetting?.plusFreeShipMinOrder ?? PLUS_FREE_SHIP_MIN_ORDER;
 
     const rawComboIds = Array.isArray(currentUser?.cart?.comboProductIds)
       ? currentUser.cart.comboProductIds
@@ -129,8 +139,10 @@ export async function POST(request) {
         total -= (coupon.discount / 100) * total;
       }
 
-      const qualifiesPlusFreeShip = isPlusMember && total >= PLUS_FREE_SHIP_MIN_ORDER;
-      if (!qualifiesPlusFreeShip) {
+      const qualifiesFreeShip = isPlusMember
+        ? total >= plusFreeShipMinOrder
+        : total >= freeShipMinOrder;
+      if (!qualifiesFreeShip) {
         total += SHIPPING_FEE;
       }
 

@@ -23,7 +23,8 @@ const OrderSummary = ({ totalPrice, items }) => {
   const addressList = useSelector((state) => state.address.list);
   const { cartItems, comboProductIds = [] } = useSelector((state) => state.cart);
   const shippingFee = 50000;
-  const plusFreeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
+  const defaultPlusFreeShipMinOrder = Number(process.env.NEXT_PUBLIC_PLUS_FREE_SHIP_MIN_ORDER || 199000);
+  const defaultFreeShipMinOrder = Number(process.env.NEXT_PUBLIC_FREE_SHIP_MIN_ORDER || 200000);
 
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -33,6 +34,8 @@ const OrderSummary = ({ totalPrice, items }) => {
   const [isPlusMember, setIsPlusMember] = useState(false);
   const [comboDiscountPercent, setComboDiscountPercent] = useState(DEFAULT_COMBO_DISCOUNT_PERCENT);
   const [maxComboItems, setMaxComboItems] = useState(DEFAULT_MAX_COMBO_ITEMS);
+  const [freeShipMinOrder, setFreeShipMinOrder] = useState(defaultFreeShipMinOrder);
+  const [plusFreeShipMinOrder, setPlusFreeShipMinOrder] = useState(defaultPlusFreeShipMinOrder);
 
   useEffect(() => {
     const fetchMembership = async () => {
@@ -73,6 +76,25 @@ const OrderSummary = ({ totalPrice, items }) => {
 
     fetchComboSetting();
   }, []);
+
+  useEffect(() => {
+    const fetchShippingSetting = async () => {
+      try {
+        const response = await fetch("/api/shipping-setting", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const freeThreshold = Number(data?.setting?.freeShipMinOrder);
+        const plusThreshold = Number(data?.setting?.plusFreeShipMinOrder);
+        if (!Number.isNaN(freeThreshold) && freeThreshold >= 0) setFreeShipMinOrder(freeThreshold);
+        if (!Number.isNaN(plusThreshold) && plusThreshold >= 0) setPlusFreeShipMinOrder(plusThreshold);
+      } catch {
+        setFreeShipMinOrder(defaultFreeShipMinOrder);
+        setPlusFreeShipMinOrder(defaultPlusFreeShipMinOrder);
+      }
+    };
+
+    fetchShippingSetting();
+  }, [defaultFreeShipMinOrder, defaultPlusFreeShipMinOrder]);
 
   const selectedComboIds = useMemo(
     () => comboProductIds.filter((id) => Boolean(cartItems[id])).slice(0, maxComboItems),
@@ -145,8 +167,9 @@ const OrderSummary = ({ totalPrice, items }) => {
   const subtotalAfterCombo = Math.max(0, totalPrice - comboDiscountAmount);
   const couponAmount = coupon ? (coupon.discount / 100) * subtotalAfterCombo : 0;
   const subtotalAfterDiscount = subtotalAfterCombo - couponAmount;
-  const qualifiesPlusFreeShip = isPlusMember && subtotalAfterDiscount >= plusFreeShipMinOrder;
-  const finalTotal = qualifiesPlusFreeShip ? subtotalAfterDiscount : subtotalAfterDiscount + shippingFee;
+  const freeShipThreshold = isPlusMember ? plusFreeShipMinOrder : freeShipMinOrder;
+  const qualifiesFreeShip = subtotalAfterDiscount >= freeShipThreshold;
+  const finalTotal = qualifiesFreeShip ? subtotalAfterDiscount : subtotalAfterDiscount + shippingFee;
 
   return (
     <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-slate-50/30 p-7 text-sm text-slate-500 lg:max-w-[340px]">
@@ -202,19 +225,20 @@ const OrderSummary = ({ totalPrice, items }) => {
           <div className="flex flex-col gap-1 text-right font-medium">
             <p>{formatMoney(totalPrice, currency)}</p>
             {comboDiscountAmount > 0 && <p>{`-${formatMoney(comboDiscountAmount, currency)}`}</p>}
-            {qualifiesPlusFreeShip ? <p>Miễn phí</p> : <p>{formatMoney(shippingFee, currency)}</p>}
+            {qualifiesFreeShip ? <p>Miễn phí</p> : <p>{formatMoney(shippingFee, currency)}</p>}
             {coupon && <p>{`-${formatMoney(couponAmount, currency)}`}</p>}
           </div>
         </div>
 
-        {isPlusMember && !qualifiesPlusFreeShip && (
+        {isPlusMember && !qualifiesFreeShip && (
           <p className="mt-2 text-xs text-amber-600">
             Plus miễn phí vận chuyển cho đơn từ {formatMoney(plusFreeShipMinOrder, currency)}
           </p>
         )}
         {!isPlusMember && (
           <p className="mt-2 text-xs text-amber-600">
-            Nâng cấp Plus để được miễn phí vận chuyển cho đơn từ {formatMoney(plusFreeShipMinOrder, currency)}
+            Miễn phí vận chuyển cho đơn từ {formatMoney(freeShipMinOrder, currency)}.
+            Nâng cấp Plus để nhận ưu đãi từ {formatMoney(plusFreeShipMinOrder, currency)}
           </p>
         )}
 
