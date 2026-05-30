@@ -246,12 +246,45 @@ export default function AdminCoupons() {
     const now = new Date();
     const dayMs = 24 * 60 * 60 * 1000;
     const sevenDaysLater = new Date(now.getTime() + 7 * dayMs);
-
-    const availableCoupons = coupons.filter((c) => {
-      const notExpired = new Date(c.expiresAt) > now;
-      const hasQuota = Number(c.maxUses || 0) === 0 || Number(c.usedCount || 0) < Number(c.maxUses || 0);
-      return notExpired && hasQuota;
+    const VIETNAM_TZ = "Asia/Bangkok";
+    const dateKeyFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: VIETNAM_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
+    const getDateKey = (value) => {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return null;
+      const parts = dateKeyFormatter.formatToParts(d);
+      const year = parts.find((p) => p.type === "year")?.value;
+      const month = parts.find((p) => p.type === "month")?.value;
+      const day = parts.find((p) => p.type === "day")?.value;
+      if (!year || !month || !day) return null;
+      return `${year}-${month}-${day}`;
+    };
+    const todayKey = getDateKey(now);
+    const sevenDaysLaterKey = getDateKey(sevenDaysLater);
+    const isCouponAvailable = (coupon) => {
+      const expireKey = getDateKey(coupon?.expiresAt);
+      const notExpired = expireKey && todayKey ? expireKey >= todayKey : false;
+      const maxUses = Number(coupon?.maxUses || 0);
+      const usedCount = Number(coupon?.usedCount || 0);
+      const hasQuota = maxUses === 0 || usedCount < maxUses;
+      return notExpired && hasQuota;
+    };
+
+    const expiredCoupons = coupons.filter((c) => {
+      const expireKey = getDateKey(c?.expiresAt);
+      if (!expireKey || !todayKey) return true;
+      return expireKey < todayKey;
+    });
+    const outOfQuotaCoupons = coupons.filter((c) => Number(c.maxUses || 0) > 0 && Number(c.usedCount || 0) >= Number(c.maxUses || 0));
+    const unavailableCodeSet = new Set([
+      ...expiredCoupons.map((c) => c.code),
+      ...outOfQuotaCoupons.map((c) => c.code),
+    ]);
+    const availableCoupons = coupons.filter((c) => !unavailableCodeSet.has(c.code) && isCouponAvailable(c));
 
     const mostUsedCoupon = [...coupons].sort((a, b) => Number(b.usedCount || 0) - Number(a.usedCount || 0))[0];
     const fastestDepletionCoupon = [...coupons]
@@ -259,15 +292,60 @@ export default function AdminCoupons() {
       .sort((a, b) => (Number(b.usedCount || 0) / Number(b.maxUses || 1)) - (Number(a.usedCount || 0) / Number(a.maxUses || 1)))[0];
 
     const expiringSoonCoupons = coupons.filter((c) => {
-      const exp = new Date(c.expiresAt);
-      return exp > now && exp <= sevenDaysLater;
+      const expireKey = getDateKey(c.expiresAt);
+      if (!expireKey || !todayKey || !sevenDaysLaterKey) return false;
+      return isCouponAvailable(c) && expireKey >= todayKey && expireKey <= sevenDaysLaterKey;
     });
-    const outOfQuotaCoupons = coupons.filter((c) => Number(c.maxUses || 0) > 0 && Number(c.usedCount || 0) >= Number(c.maxUses || 0));
+    const availableCouponsCount = Math.max(0, coupons.length - unavailableCodeSet.size);
 
-    const ordersWithCoupon = ordersAnalytics.filter((o) => Boolean(o.isCouponUsed));
+    console.log("[COUPON_ANALYTICS][availability]", {
+      nowISO: now.toISOString(),
+      todayKey,
+      totalCoupons: coupons.length,
+      expiredCount: expiredCoupons.length,
+      outOfQuotaCount: outOfQuotaCoupons.length,
+      unavailableUniqueCount: unavailableCodeSet.size,
+      availableCouponsCount,
+      coupons: coupons.map((c) => {
+        const expireKey = getDateKey(c?.expiresAt);
+        const maxUses = Number(c?.maxUses || 0);
+        const usedCount = Number(c?.usedCount || 0);
+        return {
+          code: c.code,
+          expiresAtRaw: c.expiresAt,
+          expireKey,
+          maxUses,
+          usedCount,
+          isExpired: expireKey && todayKey ? expireKey < todayKey : true,
+          isOutOfQuota: maxUses > 0 && usedCount >= maxUses,
+          availableByRule: isCouponAvailable(c),
+        };
+      }),
+    });
+
+    const ordersWithCoupon = ordersAnalytics.filter((o) => {
+      if (o?.isCouponUsed === true) return true;
+      if (typeof o?.coupon === "object" && o?.coupon) {
+        if (o.coupon.code) return true;
+        if (Number(o.coupon.discount || 0) > 0) return true;
+      }
+      if (typeof o?.coupon === "string") {
+        try {
+          const parsed = JSON.parse(o.coupon);
+          if (parsed?.code) return true;
+          if (Number(parsed?.discount || 0) > 0) return true;
+          return false;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
     const ordersWithoutCoupon = ordersAnalytics.filter((o) => !o.isCouponUsed);
     const revenueWithCoupon = ordersWithCoupon.reduce((sum, o) => sum + Number(o.total || 0), 0);
     const revenueWithoutCoupon = ordersWithoutCoupon.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    const totalRevenue = ordersAnalytics.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    const totalCouponUsedCount = ordersWithCoupon.length;
     const aovWithCoupon = ordersWithCoupon.length ? revenueWithCoupon / ordersWithCoupon.length : 0;
     const aovWithoutCoupon = ordersWithoutCoupon.length ? revenueWithoutCoupon / ordersWithoutCoupon.length : 0;
 
@@ -289,10 +367,11 @@ export default function AdminCoupons() {
     const plusAov = plusOrders.length ? plusOrders.reduce((s, o) => s + Number(o.total || 0), 0) / plusOrders.length : 0;
 
     return {
-      availableCouponsCount: availableCoupons.length,
+      availableCouponsCount,
       mostUsedCoupon,
       fastestDepletionCoupon,
       expiringSoonCoupons,
+      expiredCoupons,
       outOfQuotaCoupons,
       ordersWithCouponCount: ordersWithCoupon.length,
       revenueWithCoupon,
@@ -304,8 +383,60 @@ export default function AdminCoupons() {
       plusConversionProxy,
       regularAov,
       plusAov,
+      totalOrders: ordersAnalytics.length,
+      totalCouponOrders: ordersWithCoupon.length,
+      totalCouponUsedCount,
+      totalRevenue,
     };
   }, [coupons, comboSetting, shippingSetting, ordersAnalytics]);
+
+  const VIETNAM_TZ = "Asia/Bangkok";
+  const dateKeyFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: VIETNAM_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const getDateKey = (value) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    const parts = dateKeyFormatter.formatToParts(d);
+    const year = parts.find((p) => p.type === "year")?.value;
+    const month = parts.find((p) => p.type === "month")?.value;
+    const day = parts.find((p) => p.type === "day")?.value;
+    if (!year || !month || !day) return null;
+    return `${year}-${month}-${day}`;
+  };
+  const todayKey = getDateKey(new Date());
+  const isCouponExpired = (coupon) => {
+    const expireKey = getDateKey(coupon?.expiresAt);
+    if (!expireKey || !todayKey) return false;
+    return expireKey < todayKey;
+  };
+
+  const couponUsageByCode = useMemo(() => {
+    const map = new Map();
+    const normalizeCode = (code) => String(code || "").trim().toUpperCase();
+
+    ordersAnalytics.forEach((order) => {
+      let code = null;
+      if (order?.coupon && typeof order.coupon === "object" && order.coupon.code) {
+        code = order.coupon.code;
+      } else if (typeof order?.coupon === "string") {
+        try {
+          const parsed = JSON.parse(order.coupon);
+          code = parsed?.code || null;
+        } catch {
+          code = null;
+        }
+      }
+      if (!code) return;
+      const key = normalizeCode(code);
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+
+    return map;
+  }, [ordersAnalytics]);
 
   return (
     <div className="mb-40 text-slate-500">
@@ -327,9 +458,17 @@ export default function AdminCoupons() {
             <p className="text-xs text-slate-500">{analytics.fastestDepletionCoupon ? `${Math.round((Number(analytics.fastestDepletionCoupon.usedCount || 0) / Number(analytics.fastestDepletionCoupon.maxUses || 1)) * 100)}% quota` : "Không giới hạn"}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-xs text-slate-500">Doanh thu từ đơn có coupon</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-700">{Math.round(analytics.revenueWithCoupon).toLocaleString("vi-VN")} đ</p>
-            <p className="text-xs text-slate-500">{analytics.ordersWithCouponCount} đơn</p>
+            <p className="text-xs text-slate-500">Tổng lượt dùng coupon (theo Coupon.usedCount)</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-800">{analytics.totalCouponUsedCount}</p>
+            <p className="text-xs text-slate-500">Đơn có coupon ghi nhận trong Order: {analytics.totalCouponOrders}</p>
+            <p className="text-xs text-slate-500">Tổng doanh thu: {Math.round(analytics.totalRevenue).toLocaleString("vi-VN")} đ</p>
+            <p className="text-xs text-emerald-700">Doanh thu từ đơn coupon: {Math.round(analytics.revenueWithCoupon).toLocaleString("vi-VN")} đ</p>
+            <p className="text-[11px] text-slate-400">Tổng đơn đọc được: {analytics.totalOrders}</p>
+            {analytics.totalCouponUsedCount !== analytics.totalCouponOrders && (
+              <p className="text-[11px] text-amber-600">
+                Cảnh báo: lượt dùng coupon và đơn coupon đang lệch nhau.
+              </p>
+            )}
           </div>
         </div>
 
@@ -422,9 +561,12 @@ export default function AdminCoupons() {
                   <td className="px-4 py-3 text-slate-800">
                     {editingCode === coupon.code ? (
                       <input type="number" min={0} className="w-24 rounded border border-slate-200 p-1.5" value={editCoupon?.maxUses ?? ""} onChange={(e) => setEditCoupon({ ...editCoupon, maxUses: e.target.value })} />
-                    ) : coupon.maxUses > 0 ? `${coupon.usedCount}/${coupon.maxUses}` : "Không giới hạn"}
+                    ) : (() => {
+                      const usedFromOrders = couponUsageByCode.get(String(coupon.code).toUpperCase()) || 0;
+                      return coupon.maxUses > 0 ? `${usedFromOrders}/${coupon.maxUses}` : `${usedFromOrders} (không giới hạn)`;
+                    })()}
                   </td>
-                  <td className="px-4 py-3 text-slate-800">
+                  <td className={`px-4 py-3 ${isCouponExpired(coupon) ? "font-semibold text-red-600" : "text-slate-800"}`}>
                     {editingCode === coupon.code ? (
                       <input type="date" className="rounded border border-slate-200 p-1.5" value={editCoupon?.expiresAt || ""} onChange={(e) => setEditCoupon({ ...editCoupon, expiresAt: e.target.value })} />
                     ) : format(coupon.expiresAt, "yyyy-MM-dd")}

@@ -124,6 +124,34 @@ export default function StoreOrders() {
   }, [orders, analyticsPeriod, analyticsFromDate, analyticsToDate]);
 
   const customerMetrics = useMemo(() => {
+    // Lifetime map from full order history
+    const lifetimeOrderMap = new Map();
+    orders.forEach((order) => {
+      const uid = order.user?.id;
+      if (!uid) return;
+      if (!lifetimeOrderMap.has(uid)) {
+        lifetimeOrderMap.set(uid, {
+          user: order.user,
+          totalOrders: 0,
+          totalSpend: 0,
+          firstOrderAt: new Date(order.createdAt),
+        });
+      }
+      const item = lifetimeOrderMap.get(uid);
+      item.totalOrders += 1;
+      item.totalSpend += Number(order.total || 0);
+      if (new Date(order.createdAt) < item.firstOrderAt) {
+        item.firstOrderAt = new Date(order.createdAt);
+      }
+    });
+
+    // Active customer set in selected filter window
+    const activeCustomerIds = new Set();
+    filteredAnalyticsOrders.forEach((order) => {
+      const uid = order.user?.id;
+      if (uid) activeCustomerIds.add(uid);
+    });
+
     const orderMap = new Map();
     const now = new Date();
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
@@ -150,9 +178,27 @@ export default function StoreOrders() {
     });
 
     const customers = Array.from(orderMap.values());
-    const newCustomers = customers.filter((c) => c.totalOrders === 1).length;
-    const returningCustomers = customers.filter((c) => c.totalOrders > 1).length;
-    const repeatRate = customers.length ? (returningCustomers / customers.length) * 100 : 0;
+    const activeCustomersLifetime = Array.from(activeCustomerIds)
+      .map((uid) => lifetimeOrderMap.get(uid))
+      .filter(Boolean);
+
+    // Strict business definition:
+    // New customer in period = first-ever order timestamp falls inside selected filter window.
+    const windowStart = filteredAnalyticsOrders.length
+      ? new Date(Math.min(...filteredAnalyticsOrders.map((o) => new Date(o.createdAt).getTime())))
+      : null;
+    const windowEnd = filteredAnalyticsOrders.length
+      ? new Date(Math.max(...filteredAnalyticsOrders.map((o) => new Date(o.createdAt).getTime())))
+      : null;
+
+    const newCustomers = activeCustomersLifetime.filter((c) => {
+      if (!windowStart || !windowEnd) return false;
+      return c.firstOrderAt >= windowStart && c.firstOrderAt <= windowEnd;
+    }).length;
+    const returningCustomers = customers.filter((c) => c.totalOrders >= 2).length;
+    const totalCustomers = lifetimeOrderMap.size;
+    const customersPurchasedInPeriod = customers.length;
+    const repeatRate = customersPurchasedInPeriod ? (returningCustomers / customersPurchasedInPeriod) * 100 : 0;
 
     const plusCustomers = customers.filter((c) => c.user?.membershipPlan === "plus");
     const plusActive = plusCustomers.filter((c) => c.user?.membershipStatus === "active").length;
@@ -183,7 +229,8 @@ export default function StoreOrders() {
     const regularLtv = regularCustomers.length ? regularRevenue / regularCustomers.length : 0;
 
     return {
-      customerCount: customers.length,
+      customerCount: totalCustomers,
+      customersPurchasedInPeriod,
       newCustomers,
       returningCustomers,
       repeatRate,
@@ -337,17 +384,22 @@ export default function StoreOrders() {
                 <p className="mt-1 text-2xl font-semibold text-slate-800">{customerMetrics.newCustomers}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">Khách mua trong kỳ lọc</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-800">{customerMetrics.customersPurchasedInPeriod}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Khách quay lại</p>
                 <p className="mt-1 text-2xl font-semibold text-slate-800">{customerMetrics.returningCustomers}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Tỉ lệ mua lại (repeat rate)</p>
+                <p className="text-xs text-slate-500">Tỉ lệ mua lại</p>
                 <p className="mt-1 text-2xl font-semibold text-emerald-700">{customerMetrics.repeatRate.toFixed(1)}%</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Tổng khách đã mua</p>
-                <p className="mt-1 text-2xl font-semibold text-slate-800">{customerMetrics.customerCount}</p>
-              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">Tổng khách hàng</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-800">{customerMetrics.customerCount}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -369,7 +421,7 @@ export default function StoreOrders() {
               <div className="rounded-lg border border-slate-200 p-3">
                 <p className="text-sm font-medium text-slate-700">Tăng trưởng Plus member</p>
                 <p className="mt-2 text-sm text-slate-600">
-                  Mới 30 ngày: <span className="font-semibold text-slate-800">{customerMetrics.plusCurrentWindow}</span> · Kỳ trước: <span className="font-semibold text-slate-800">{customerMetrics.plusPrevWindow}</span>
+                  Mới: <span className="font-semibold text-slate-800">{customerMetrics.plusCurrentWindow}</span> · Kỳ trước: <span className="font-semibold text-slate-800">{customerMetrics.plusPrevWindow}</span>
                 </p>
                 <p className={`mt-1 text-sm font-semibold ${customerMetrics.plusGrowthPercent >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                   {customerMetrics.plusGrowthPercent >= 0 ? "+" : ""}{customerMetrics.plusGrowthPercent.toFixed(1)}%
