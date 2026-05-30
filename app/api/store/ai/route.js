@@ -17,7 +17,7 @@ const buildFallbackSuggestion = (productName = "", category = "", origin = "") =
   };
 };
 
-async function main(productName, category, origin, imageDataUrl) {
+async function main(productName, category, origin, imageInput) {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const modelName = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
@@ -71,7 +71,7 @@ Giữ nguyên tên sản phẩm trong trường "name".`,
         },
         {
           type: "image_url",
-          image_url: { url: imageDataUrl },
+          image_url: { url: imageInput },
         },
       ],
     },
@@ -116,18 +116,19 @@ export async function POST(request) {
     await getOrCreateSystemStore();
 
     payload = await request.json();
-    const { productName, category, origin, imageDataUrl } = payload;
+    const { productName, category, origin, imageDataUrl, imageUrl } = payload;
+    const imageInput = imageUrl || imageDataUrl;
 
     if (!productName?.trim()) return NextResponse.json({ error: "Missing product name" }, { status: 400 });
     if (!category?.trim() || !origin?.trim()) return NextResponse.json({ error: "Missing category or origin" }, { status: 400 });
-    if (!imageDataUrl || !String(imageDataUrl).startsWith("data:image/")) {
-      return NextResponse.json({ error: "Missing image data for AI analysis" }, { status: 400 });
+    if (!imageInput || (typeof imageInput !== "string")) {
+      return NextResponse.json({ error: "Missing image input for AI analysis" }, { status: 400 });
     }
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: "Missing OPENAI_API_KEY on server" }, { status: 400 });
     }
 
-    const result = await main(productName.trim(), category.trim(), origin.trim(), imageDataUrl);
+    const result = await main(productName.trim(), category.trim(), origin.trim(), imageInput);
     return NextResponse.json({ ...result }, { status: 200 });
   } catch (error) {
     console.log("[AI_PRODUCT_ERROR]", error);

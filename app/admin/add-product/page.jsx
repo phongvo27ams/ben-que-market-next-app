@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "@clerk/nextjs";
 import Image from "next/image";
@@ -30,7 +30,7 @@ export default function AdminAddProduct() {
 
   const handleGenerateDescriptionWithAI = async () => {
     if (!productInfo.name.trim() || !productInfo.category || !productInfo.origin.trim()) {
-      toast.error("Hãy nhập Tên sản phẩm, Danh mục và Xuất xứ trước khi dùng AI.");
+      toast.error("Vui lòng nhập Tên sản phẩm, Danh mục và Xuất xứ trước khi dùng AI.");
       return;
     }
     const firstImageFile = images[1] || images[2] || images[3] || images[4];
@@ -38,16 +38,22 @@ export default function AdminAddProduct() {
       toast.error("Vui lòng tải lên ít nhất 1 ảnh để AI phân tích.");
       return;
     }
+
     try {
       setAiLoading(true);
-      const imageDataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("Không thể đọc ảnh để gửi AI"));
-        reader.readAsDataURL(firstImageFile);
-      });
-
       const token = await getToken();
+
+      // Upload first image to ImageKit and send URL to AI API to avoid large base64 payloads (413).
+      const aiImageFormData = new FormData();
+      aiImageFormData.append("image", firstImageFile);
+      const uploadResponse = await axios.post("/api/store/product/description-image", aiImageFormData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const imageUrl = uploadResponse?.data?.url;
+      if (!imageUrl) {
+        throw new Error("Không thể tải ảnh lên để AI phân tích.");
+      }
+
       const response = await toast.promise(
         axios.post(
           "/api/store/ai",
@@ -55,7 +61,7 @@ export default function AdminAddProduct() {
             productName: productInfo.name,
             category: productInfo.category,
             origin: productInfo.origin,
-            imageDataUrl,
+            imageUrl,
           },
           { headers: { Authorization: `Bearer ${token}` } }
         ),
@@ -65,6 +71,7 @@ export default function AdminAddProduct() {
           error: (err) => err?.response?.data?.error || err.message,
         }
       );
+
       if (response.data?.description) {
         setProductInfo((prev) => ({
           ...prev,
@@ -72,6 +79,8 @@ export default function AdminAddProduct() {
           description: response.data.description,
         }));
       }
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
     } finally {
       setAiLoading(false);
     }
