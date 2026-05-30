@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -68,7 +68,7 @@ const comparisonRows = [
   { label: "Mức phù hợp", free: "Mua thỉnh thoảng", plus: "Mua thường xuyên", icon: SparklesIcon },
 ];
 
-export default function PricingPage() {
+function PricingPageContent() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const searchParams = useSearchParams();
@@ -335,5 +335,13 @@ export default function PricingPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-14 text-slate-600">Đang tải trang bảng giá...</div>}>
+      <PricingPageContent />
+    </Suspense>
   );
 }
