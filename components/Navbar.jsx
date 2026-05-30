@@ -77,7 +77,7 @@ const Navbar = () => {
 
   const isPlusMember = membership?.membershipPlan === "plus";
   const isPlusYearly = membership?.membershipPeriod === "yearly";
-  const plusBadgeLabel = isPlusYearly ? "Plus" : "Plus";
+  const plusBadgeLabel = "Plus";
 
   const navLinks = [
     { href: "/", label: "Trang Chủ", match: (path) => path === "/" },
@@ -186,6 +186,53 @@ const Navbar = () => {
             <Search size={18} className="text-slate-600" />
             <input className="w-full bg-transparent text-sm outline-none placeholder-slate-600" type="text" placeholder="Tìm kiếm sản phẩm..." value={search} onChange={(e) => setSearch(e.target.value)} required />
           </form>
+
+          <div className={`mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 ${mobileMenuOpen ? "max-h-[26rem] opacity-100" : "max-h-0 border-transparent opacity-0"}`}>
+            <div className="flex flex-col p-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={`mobile-${link.href}`}
+                  href={link.href}
+                  className={`rounded-xl px-4 py-3 text-sm font-medium transition ${link.match(pathname) ? "bg-green-500 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+
+              <Link
+                href="/cart"
+                className={`mt-1 flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition ${pathname.startsWith("/cart") ? "bg-green-500 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+              >
+                <span>Giỏ hàng</span>
+                {mounted && cartCount > 0 && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${pathname.startsWith("/cart") ? "bg-white text-green-600" : "bg-green-600 text-white"}`}>
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                href="/wishlist"
+                className={`mt-1 flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition ${pathname.startsWith("/wishlist") ? "bg-green-500 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+              >
+                <span>Wishlist</span>
+                {mounted && wishlistCount > 0 && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${pathname.startsWith("/wishlist") ? "bg-white text-green-600" : "bg-green-600 text-white"}`}>
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+
+              {mounted && user && (
+                <Link
+                  href="/orders"
+                  className={`mt-1 rounded-xl px-4 py-3 text-sm font-medium transition ${pathname.startsWith("/orders") ? "bg-green-500 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                >
+                  Đơn hàng của tôi
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </nav>

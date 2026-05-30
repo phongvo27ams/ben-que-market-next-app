@@ -14,6 +14,11 @@ const ProductDescription = ({ product }) => {
       .replace(/\u00A0/g, " ")
   }, [product.description])
 
+  const sortedRatings = useMemo(() => {
+    const ratings = Array.isArray(product.rating) ? [...product.rating] : []
+    return ratings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [product.rating])
+
   return (
     <div className="my-14 text-sm text-slate-600 sm:my-18">
       <div className="mb-6 flex max-w-full overflow-x-auto border-b border-slate-200 sm:max-w-2xl">
@@ -37,7 +42,7 @@ const ProductDescription = ({ product }) => {
 
       {selectedTab === "Đánh giá" && (
         <div className="mt-8 flex flex-col gap-6 sm:mt-10">
-          {product.rating.map((item, index) => (
+          {sortedRatings.map((item, index) => (
             <div key={index} className="flex gap-4 sm:gap-5">
               <Image src={item.user.image} alt={item.user.name} className="h-10 w-10 rounded-full" width={80} height={80} />
               <div className="min-w-0">

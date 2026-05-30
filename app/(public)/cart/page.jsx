@@ -167,7 +167,62 @@ export default function Cart() {
         <PageTitle heading="Giỏ hàng" text="những sản phẩm bạn đã chọn" linkText="Mua thêm" />
 
         <div className="flex items-start justify-between gap-5 max-lg:flex-col">
-          <table className="w-full max-w-4xl table-auto text-slate-600">
+          <div className="w-full max-w-4xl md:hidden">
+            <div className="space-y-4">
+              {cartArray.map((item) => (
+                <div key={`mobile-${item.id}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3">
+                    <Link href={`/product/${item.id}`} className="flex h-24 w-24 items-center justify-center rounded-xl bg-slate-100">
+                      <Image src={item.images[0]} className="h-20 w-20 object-contain" alt={item.name} width={80} height={80} />
+                    </Link>
+                    <div className="min-w-0">
+                      <Link href={`/product/${item.id}`} className="line-clamp-2 text-sm font-medium text-slate-700 transition hover:text-green-600">
+                        {item.name}
+                      </Link>
+                      <p className="mt-1 text-xs text-slate-500">{item.category}</p>
+                      <p className="text-xs text-slate-400">{item.origin || "Chưa cập nhật xuất xứ"}</p>
+                      {comboProductIds.includes(item.id) ? (
+                        <div className="mt-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">Giá Combo</p>
+                          <p className="text-sm font-bold text-emerald-600">
+                            {formatMoney(Math.round(item.price * (1 - comboDiscountPercent / 100)))}
+                          </p>
+                          <p className="text-xs text-slate-400 line-through">{formatMoney(item.price)}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm font-medium text-slate-700">{formatMoney(item.price)}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Số lượng</p>
+                      <Counter productId={item.id} maxStock={item.inStock} />
+                    </div>
+                    <div className="text-right">
+                      <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Thành tiền</p>
+                      <p className="whitespace-nowrap text-sm font-semibold text-slate-700">
+                        {formatMoney(
+                          (comboProductIds.includes(item.id)
+                            ? Math.round(item.price * (1 - comboDiscountPercent / 100))
+                            : item.price) * item.quantity
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteItemFromCart(item.id)}
+                      className="rounded-full p-2.5 text-red-500 transition-all hover:bg-red-50 active:scale-95"
+                    >
+                      <Trash2Icon size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <table className="hidden w-full max-w-4xl table-auto text-slate-600 md:table">
             <thead>
               <tr className="max-sm:text-sm">
                 <th className="text-left">Sản phẩm</th>
@@ -178,14 +233,14 @@ export default function Cart() {
             </thead>
             <tbody>
               {cartArray.map((item) => (
-                <tr key={item.id} className="space-x-2">
-                  <td className="my-4 flex gap-3">
-                    <Link href={`/product/${item.id}`} className="flex gap-3">
-                      <div className="flex size-18 items-center justify-center gap-3 rounded-md bg-slate-100 transition hover:bg-slate-200">
-                        <Image src={item.images[0]} className="h-14 w-auto" alt={item.name} width={45} height={45} />
+                <tr key={item.id} className="align-top border-b border-slate-100 last:border-b-0">
+                  <td className="py-5">
+                    <Link href={`/product/${item.id}`} className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:flex sm:gap-3">
+                      <div className="flex h-[88px] w-[88px] items-center justify-center rounded-md bg-slate-100 transition hover:bg-slate-200 sm:size-18">
+                        <Image src={item.images[0]} className="h-20 w-20 object-contain sm:h-14 sm:w-auto" alt={item.name} width={80} height={80} />
                       </div>
-                      <div>
-                        <p className="max-sm:text-sm transition hover:text-green-600">{item.name}</p>
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm transition hover:text-green-600 sm:text-base">{item.name}</p>
                         <p className="text-xs text-slate-500">{item.category}</p>
                         <p className="text-xs text-slate-400">{item.origin || "Chưa cập nhật xuất xứ"}</p>
                         {comboProductIds.includes(item.id) ? (
@@ -200,22 +255,22 @@ export default function Cart() {
                             )}
                           </div>
                         ) : (
-                          <p>{formatMoney(item.price)}</p>
+                          <p className="whitespace-nowrap">{formatMoney(item.price)}</p>
                         )}
                       </div>
                     </Link>
                   </td>
-                  <td className="text-center">
+                  <td className="py-5 text-center align-top">
                     <Counter productId={item.id} maxStock={item.inStock} />
                   </td>
-                  <td className="whitespace-nowrap text-center">
+                  <td className="whitespace-nowrap py-5 text-center align-top">
                     {formatMoney(
                       (comboProductIds.includes(item.id)
                         ? Math.round(item.price * (1 - comboDiscountPercent / 100))
                         : item.price) * item.quantity
                     )}
                   </td>
-                  <td className="text-center max-md:hidden">
+                  <td className="py-5 text-center align-top max-md:hidden">
                     <button
                       onClick={() => handleDeleteItemFromCart(item.id)}
                       className="rounded-full p-2.5 text-red-500 transition-all hover:bg-red-50 active:scale-95"

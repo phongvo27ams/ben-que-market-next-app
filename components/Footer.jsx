@@ -88,7 +88,7 @@ const Footer = () => {
 
   return (
     <footer className="border-b border-slate-500/30 bg-white">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-8 py-10 text-slate-500 lg:grid-cols-[220px_minmax(0,0.92fr)_minmax(250px,1.08fr)_minmax(190px,0.92fr)_minmax(200px,0.92fr)] lg:items-start lg:gap-10">
           <div className="flex flex-col items-center md:items-start">
             <Link href="/" className="inline-flex justify-center">
