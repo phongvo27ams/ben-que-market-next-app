@@ -107,6 +107,7 @@ Giữ nguyên tên sản phẩm trong trường "name".`,
 
 export async function POST(request) {
   let payload = {};
+  const startedAt = Date.now();
 
   try {
     const { userId } = getAuth(request);
@@ -118,6 +119,15 @@ export async function POST(request) {
     payload = await request.json();
     const { productName, category, origin, imageDataUrl, imageUrl } = payload;
     const imageInput = imageUrl || imageDataUrl;
+    console.log("[AI_PRODUCT] request", {
+      userId,
+      hasProductName: Boolean(productName?.trim()),
+      category,
+      origin,
+      hasImageUrl: Boolean(imageUrl),
+      hasImageDataUrl: Boolean(imageDataUrl),
+      imageInputPrefix: typeof imageInput === "string" ? imageInput.slice(0, 24) : null,
+    });
 
     if (!productName?.trim()) return NextResponse.json({ error: "Missing product name" }, { status: 400 });
     if (!category?.trim() || !origin?.trim()) return NextResponse.json({ error: "Missing category or origin" }, { status: 400 });
@@ -129,9 +139,19 @@ export async function POST(request) {
     }
 
     const result = await main(productName.trim(), category.trim(), origin.trim(), imageInput);
+    console.log("[AI_PRODUCT] success", {
+      userId,
+      fallback: Boolean(result?.fallback),
+      tookMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ...result }, { status: 200 });
   } catch (error) {
-    console.log("[AI_PRODUCT_ERROR]", error);
+    console.log("[AI_PRODUCT_ERROR]", {
+      message: error?.message,
+      code: error?.code,
+      status: error?.status ?? error?.response?.status,
+      tookMs: Date.now() - startedAt,
+    });
     const status = error?.status ?? error?.response?.status;
 
     if (status === 429) {

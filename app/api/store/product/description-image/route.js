@@ -15,6 +15,7 @@ const buildImageUrl = (imagekit, filePath) => imagekit.url({
 });
 
 export async function POST(request) {
+  const startedAt = Date.now();
   try {
     const { userId } = getAuth(request);
     const isAdmin = await authAdmin(userId);
@@ -27,10 +28,14 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const image = formData.get("image");
+    const imageSize = image && typeof image !== "string" ? image.size : 0;
+    const imageName = image && typeof image !== "string" ? image.name : null;
 
     if (!image || typeof image === "string") {
+      console.log("[PRODUCT_IMAGE_UPLOAD] reject: missing image file", { userId, imageType: typeof image });
       return NextResponse.json({ error: "Image file is required" }, { status: 400 });
     }
+    console.log("[PRODUCT_IMAGE_UPLOAD] start", { userId, storeId, imageName, imageSize });
 
     const imagekit = getImageKit();
     const buffer = Buffer.from(await image.arrayBuffer());
@@ -42,10 +47,23 @@ export async function POST(request) {
     });
 
     const url = buildImageUrl(imagekit, response.filePath);
+    console.log("[PRODUCT_IMAGE_UPLOAD] success", {
+      userId,
+      storeId,
+      imageName,
+      imageSize,
+      filePath: response.filePath,
+      tookMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json({ url }, { status: 201 });
   } catch (error) {
-    console.error("Error uploading description image:", error);
+    console.error("[PRODUCT_IMAGE_UPLOAD] error", {
+      message: error?.message,
+      code: error?.code,
+      status: error?.status ?? error?.response?.status,
+      tookMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
   }
 }

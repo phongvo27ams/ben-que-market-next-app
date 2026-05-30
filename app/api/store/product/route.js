@@ -88,6 +88,7 @@ const deleteImagesByUrls = async (urls = []) => {
 
 // Add a new product to the store
 export async function POST(request) {
+  const startedAt = Date.now();
   try {
     const { userId } = getAuth(request);
     const isAdmin = await authAdmin(userId);
@@ -109,10 +110,31 @@ export async function POST(request) {
     const certification = formData.get("certification");
     const ocopStars = Number(formData.get("ocopStars") || 0);
     const images = formData.getAll("images");
+    const imageUrlsRaw = formData.get("imageUrls");
+    let uploadedImageUrls = [];
+    if (imageUrlsRaw) {
+      try {
+        uploadedImageUrls = JSON.parse(imageUrlsRaw);
+      } catch {
+        uploadedImageUrls = [];
+      }
+    }
 
     const inStock = Number(formData.get("inStock") || 0);
+    console.log("[PRODUCT_CREATE] request", {
+      userId,
+      storeId,
+      name,
+      category,
+      imagesCount: images.length,
+      preUploadedImageUrlsCount: uploadedImageUrls.length,
+      hasDescription: Boolean(description),
+      mrp,
+      price,
+      inStock,
+    });
 
-    if (!name || !description || !mrp || !price || !category || !origin || !certification || images.length === 0) {
+    if (!name || !description || !mrp || !price || !category || !origin || !certification || (images.length === 0 && uploadedImageUrls.length === 0)) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
@@ -133,8 +155,12 @@ export async function POST(request) {
       }
     }
 
-    // Upload images to ImageKit
-    const imageUrl = await uploadImages(images);
+    let imageUrl = uploadedImageUrls;
+    if (imageUrl.length === 0) {
+      console.log("[PRODUCT_CREATE] uploading images inside route", { count: images.length });
+      imageUrl = await uploadImages(images);
+    }
+    console.log("[PRODUCT_CREATE] image urls ready", { count: imageUrl.length });
 
     await prisma.product.create({
       data: {
@@ -153,9 +179,21 @@ export async function POST(request) {
       }
     });
 
+    console.log("[PRODUCT_CREATE] success", {
+      userId,
+      storeId,
+      name,
+      imageCount: imageUrl.length,
+      tookMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ message: "Product added successfully" }, { status: 201 });
   } catch (error) {
-    console.error("Error adding product:", error);
+    console.error("[PRODUCT_CREATE] error", {
+      message: error?.message,
+      code: error?.code,
+      status: error?.status ?? error?.response?.status,
+      tookMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ error: error.code || error.message }, { status: 400 });
   }
 }

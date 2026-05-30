@@ -8,6 +8,15 @@ import toast from "react-hot-toast";
 import { assets, categories } from "../../../assets/assets";
 import RichTextEditor from "../../../components/RichTextEditor";
 
+const normalizeError = (error, fallback = "Có lỗi xảy ra") => {
+  const payload = error?.response?.data;
+  if (typeof payload === "string") return payload;
+  if (payload?.error) return typeof payload.error === "string" ? payload.error : JSON.stringify(payload.error);
+  if (payload?.message) return payload.message;
+  if (typeof error?.message === "string") return error.message;
+  return fallback;
+};
+
 export default function AdminAddProduct() {
   const { getToken } = useAuth();
   const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null });
@@ -26,7 +35,16 @@ export default function AdminAddProduct() {
   });
 
   const onChangeHandler = (e) => setProductInfo((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  const handleImageUpload = (key, file) => setImages((prev) => ({ ...prev, [key]: file }));
+  const handleImageUpload = (key, file) => setImages((prev) => ({ ...prev, [key]: file || null }));
+
+  const uploadSingleImage = async (token, file) => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await axios.post("/api/store/product/description-image", form, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res?.data?.url;
+  };
 
   const handleGenerateDescriptionWithAI = async () => {
     if (!productInfo.name.trim() || !productInfo.category || !productInfo.origin.trim()) {
@@ -42,17 +60,8 @@ export default function AdminAddProduct() {
     try {
       setAiLoading(true);
       const token = await getToken();
-
-      // Upload first image to ImageKit and send URL to AI API to avoid large base64 payloads (413).
-      const aiImageFormData = new FormData();
-      aiImageFormData.append("image", firstImageFile);
-      const uploadResponse = await axios.post("/api/store/product/description-image", aiImageFormData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const imageUrl = uploadResponse?.data?.url;
-      if (!imageUrl) {
-        throw new Error("Không thể tải ảnh lên để AI phân tích.");
-      }
+      const imageUrl = await uploadSingleImage(token, firstImageFile);
+      if (!imageUrl) throw new Error("Không thể tải ảnh lên để AI phân tích.");
 
       const response = await toast.promise(
         axios.post(
@@ -68,7 +77,7 @@ export default function AdminAddProduct() {
         {
           loading: "AI đang viết bài giới thiệu...",
           success: "Đã tạo mô tả sản phẩm.",
-          error: (err) => err?.response?.data?.error || err.message,
+          error: (err) => normalizeError(err, "Không thể tạo mô tả bằng AI"),
         }
       );
 
@@ -80,7 +89,7 @@ export default function AdminAddProduct() {
         }));
       }
     } catch (error) {
-      toast.error(error?.response?.data?.error || error.message);
+      toast.error(normalizeError(error));
     } finally {
       setAiLoading(false);
     }
@@ -89,10 +98,23 @@ export default function AdminAddProduct() {
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
-      if (!images[1] && !images[2] && !images[3] && !images[4]) {
+      const selectedImages = Object.values(images).filter(Boolean);
+      if (selectedImages.length === 0) {
         return toast.error("Vui lòng tải lên ít nhất một ảnh sản phẩm.");
       }
       setLoading(true);
+      const token = await getToken();
+
+      // Upload all product images first to avoid large multipart payloads to /api/store/product on Vercel.
+      const imageUrls = [];
+      for (const file of selectedImages) {
+        const url = await uploadSingleImage(token, file);
+        if (url) imageUrls.push(url);
+      }
+      if (imageUrls.length === 0) {
+        throw new Error("Không thể tải ảnh sản phẩm lên.");
+      }
+
       const formData = new FormData();
       Object.entries({
         name: productInfo.name,
@@ -105,14 +127,14 @@ export default function AdminAddProduct() {
         certification: productInfo.certification,
         ocopStars: productInfo.ocopStars,
       }).forEach(([k, v]) => formData.append(k, v));
-      Object.keys(images).forEach((key) => images[key] && formData.append("images", images[key]));
-      const token = await getToken();
+      formData.append("imageUrls", JSON.stringify(imageUrls));
+
       await axios.post("/api/store/product", formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Đã thêm sản phẩm thành công.");
     } catch (error) {
-      toast.error(error?.response?.data?.error || error.message);
+      toast.error(normalizeError(error));
     } finally {
       setLoading(false);
     }
@@ -132,7 +154,7 @@ export default function AdminAddProduct() {
         {Object.keys(images).map((key) => (
           <label key={key} htmlFor={`images${key}`}>
             <Image width={300} height={300} className="h-16 w-auto cursor-pointer rounded border border-slate-200" src={images[key] ? URL.createObjectURL(images[key]) : assets.upload_area} alt="" />
-            <input type="file" accept="image/*" id={`images${key}`} onChange={(e) => handleImageUpload(key, e.target.files[0])} hidden />
+            <input type="file" accept="image/*" id={`images${key}`} onChange={(e) => handleImageUpload(key, e.target.files?.[0])} hidden />
           </label>
         ))}
       </div>
