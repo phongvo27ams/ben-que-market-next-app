@@ -21,6 +21,22 @@ if (-not $dbUrl) {
   throw "DATABASE_URL is empty"
 }
 
+# pg_dump does not support Prisma-style query param `schema=...` in URI.
+try {
+  $uri = [System.Uri]$dbUrl
+  $queryParts = @()
+  if ($uri.Query) {
+    $raw = $uri.Query.TrimStart("?")
+    $queryParts = $raw -split "&" | Where-Object { $_ -and ($_ -notmatch "^schema=") }
+  }
+  $cleanBuilder = [System.UriBuilder]$dbUrl
+  $cleanBuilder.Query = ($queryParts -join "&")
+  $dbUrlForPgDump = $cleanBuilder.Uri.AbsoluteUri
+} catch {
+  # Fallback: strip schema query by regex if URI parse fails
+  $dbUrlForPgDump = ($dbUrl -replace "([?&])schema=[^&]*&?", '$1').TrimEnd('?', '&')
+}
+
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $safeLabel = ($Label -replace "[^a-zA-Z0-9_-]", "-")
 
@@ -31,7 +47,10 @@ $fileName = "ben-que-market-$timestamp-$safeLabel.dump"
 $filePath = Join-Path $backupDir $fileName
 
 Write-Host "Creating backup: $filePath"
-pg_dump --dbname="$dbUrl" --format=custom --file="$filePath" --no-owner --no-privileges
+pg_dump --dbname="$dbUrlForPgDump" --format=custom --file="$filePath" --no-owner --no-privileges
+if ($LASTEXITCODE -ne 0) {
+  throw "pg_dump failed with exit code $LASTEXITCODE"
+}
 
 $latestPointer = Join-Path $backupDir "LATEST.txt"
 Set-Content -Path $latestPointer -Value $fileName -Encoding UTF8

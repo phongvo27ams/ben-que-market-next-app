@@ -12,6 +12,7 @@
     "db:backup": "powershell -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1",
     "db:backup:now": "powershell -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1 -Label baseline",
     "db:restore:latest": "powershell -ExecutionPolicy Bypass -File ./scripts/restore-db.ps1",
+    "db:restore:latest:to-neon": "powershell -ExecutionPolicy Bypass -File ./scripts/restore-latest-to-neon.ps1",
     "encoding:check": "node ./scripts/encoding-guard.mjs",
     "encoding:fix": "node ./scripts/encoding-guard.mjs --fix",
     "db:fill:last-month": "node ./scripts/fill-last-month-data.mjs",

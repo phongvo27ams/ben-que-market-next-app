@@ -55,40 +55,7 @@ On Windows PowerShell, use:
 Copy-Item .env.example .env
 ```
 
-Fill in the environment variables in `.env`. The important groups are:
-
-```env
-NEXT_PUBLIC_APP_ID="ben-que-market-next-app"
-NEXT_PUBLIC_CURRENCY_SYMBOL="đ"
-
-ADMIN_EMAIL="admin@example.com"
-
-DATABASE_URL="postgresql://..."
-DIRECT_URL="postgresql://..."
-
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
-CLERK_SECRET_KEY="sk_test_..."
-
-INNGEST_EVENT_KEY="..."
-INNGEST_SIGNING_KEY="..."
-
-IMAGEKIT_PUBLIC_KEY="..."
-IMAGEKIT_PRIVATE_KEY="..."
-IMAGEKIT_URL_ENDPOINT="https://ik.imagekit.io/..."
-
-STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-
-OPENAI_API_KEY="sk-..."
-OPENAI_MODEL="gpt-4o-mini"
-```
-
-If you use configured Stripe Plus subscription prices, also define the price IDs expected by the subscription checkout route:
-
-```env
-STRIPE_PRICE_PLUS_MONTHLY="price_..."
-STRIPE_PRICE_PLUS_YEARLY="price_..."
-```
+Fill in the environment variables in `.env`.
 
 Generate Prisma Client:
 
@@ -265,6 +232,12 @@ npm run db:backup
 npm run db:restore:latest
 ```
 
+To restore Neon cloud database from the local PosgreSQL:
+
+```bash
+pg_restore -d "postgresql://neondb_owner:xxxxx" --clean --if-exists --no-owner --no-privileges .\backups\db\<file.dump>
+```
+
 ## Available npm scripts
 
 ```bash
@@ -279,6 +252,4 @@ npm run db:backup:now
 npm run db:restore:latest
 npm run db:fill:last-month
 npm run db:clear:commerce
-npm run db:backfill:coupon-orders
-npm run db:sync:coupon-usedcount
 ```
